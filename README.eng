@@ -1,0 +1,122 @@
+
+OrgAsm v0.28 beta 
+Created by Alpha Studio, 2003.
+
+
+OrgASM is a two-passage assembler for Sprinter computer which supports  undocumented Z80 commands.
+
+The program required a Sprinter computer with BIOS 3.xx and DSS 1.5x.
+
+Only a brief information about this beta version. And check out 'HISTORY.ENG' file.
+
+
+	Executing.
+	----------
+
+OrgAsm [drv:\path\]inFile[.ext] [drv:\path\outFile.ext] [/options]
+
+
+	Options of this version.
+      ------------------------
+
+  /E - EXE-prefix creation
+  /C - upper Case significant in symbols
+  /M - create Symbol table
+  /S - clear screen
+
+
+	Line format.
+      ------------
+
+Label		Instruction ; Remarks
+
+
+	Undocumented commands of z80.
+      --------------------------------  
+
+SLI register (SLL) - available.
+
+XH, XL, YH, YL or HX, LX, HY, LY - available
+
+
+
+	OrgASM directives.
+      ------------------
+
+ORG, PHASE, DEPHASE, EQU, DEFB (DB), DEFW (DW), DEFS (DS), INCLUDE.
+
+About OGR:
+A program will be compiled from 8100h without ORG directive.
+
+About DEFS (DS):
+
+		ds 256			;256 bytes of zero
+		ds 10,"Hello!",0dh,0ah	;10 times of repetition "Hello!"
+						;with CR and LF
+
+Now assembler supports local labels. It should begin from "." Region of local label follow till to usual label.
+
+	Examples.
+      ---------
+
+1.
+
+Label		ld (hl),a: inc hl: djnz Label
+  or
+Label:	ld (hl),a: inc hl: djnz Label
+
+2.
+		in a,(bc) : out (bc),e
+  or
+		in a,(c) : out (c),e
+
+3.
+		ld (ix+0),a : res 7,(iy+0)
+  or
+		ld (ix),a : res 7,(iy)
+
+4.
+DSS		equ #10
+		ld hl,Text : ld c,PChars
+		rst DSS
+
+5.
+Label		  ld (hl),a : inc hl
+		  djnz Label
+  or
+		  ld (hl),a : inc hl
+		  djnz $-2
+
+6.
+
+		EX AF,AF' 
+  or
+ 		EX AF,AF
+  or
+		EXA.
+
+7. Example of usage of local labels.
+
+	ld	hl,Mess1.Text
+	ld	c,5Ch
+	rst	10h
+	;
+	ld	hl,Mess2.Text
+	ld	c,5Ch
+	rst	10h
+	;
+	ld	bc,0041h
+	rst	10h
+	ret
+
+Mess1:	db	"Text 1 ..."
+.Text:	db	"Hello world !",0Dh,0Ah,0
+
+Mess2:	db	"Text 2 ..."
+.Text:	db	"Hello world ! ;)",0Dh,0Ah,0
+
+---
+  Last edition 15.09.2002 (BLR 22:08)
+  FidoNet: 2:454/5.18 to Igor Zhadinets
+  e-mail: igor_ast@tut.by
+
