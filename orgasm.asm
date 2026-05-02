@@ -21,7 +21,7 @@ Start           equ #4200
                 org #4000
 
                 db "EXE"        ;EXE ID
-                db #00          ;EXE VERSION
+                db #01          ;EXE VERSION
                 dw #0200        ;CODE OFFSET LOW
                 dw #0000        ;CODE OFFSET HIGH
                 dw #0000        ;END-BEG ;PRIMARY LOADER
@@ -691,6 +691,7 @@ CreateSub ;в v0.2X это теперь подпрограмма
                 inc hl
                 ld (hl),a
                 inc hl
+                ld (hl),#01
                 inc hl
                 inc hl
                 ld (hl),#02

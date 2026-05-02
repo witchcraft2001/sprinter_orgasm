@@ -9,6 +9,11 @@ if ! command -v zip >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v iconv >/dev/null 2>&1; then
+  echo "Error: iconv is required to convert documentation to CP866." >&2
+  exit 1
+fi
+
 exe_path="${1:-$repo_root/out/orgasm.exe}"
 zip_path="${2:-$repo_root/distr/orgasm.zip}"
 package_root="$repo_root/out/package"
@@ -24,12 +29,47 @@ validate_83() {
   fi
 }
 
+path_to_83_upper() {
+  local path="$1"
+  local part
+  local upper_part
+  local result=""
+
+  while [ -n "$path" ]; do
+    if [[ "$path" == */* ]]; then
+      part="${path%%/*}"
+      path="${path#*/}"
+    else
+      part="$path"
+      path=""
+    fi
+
+    validate_83 "$part"
+    upper_part="$(printf '%s' "$part" | tr '[:lower:]' '[:upper:]')"
+    if [ -n "$result" ]; then
+      result="$result/$upper_part"
+    else
+      result="$upper_part"
+    fi
+  done
+
+  printf '%s' "$result"
+}
+
 copy_package_file() {
   local src="$1"
   local dst="$2"
 
   validate_83 "$(basename "$dst")"
   cp "$src" "$package_dir/$dst"
+}
+
+copy_package_cp866_file() {
+  local src="$1"
+  local dst="$2"
+
+  validate_83 "$(basename "$dst")"
+  iconv -f UTF-8 -t CP866 "$src" > "$package_dir/$dst"
 }
 
 if [ ! -f "$exe_path" ]; then
@@ -49,23 +89,34 @@ rm -rf "$package_dir"
 mkdir -p "$package_dir/EXAMPLES"
 
 copy_package_file "$exe_path" "ORGASM.EXE"
-copy_package_file "$repo_root/README" "README"
-copy_package_file "$repo_root/README.eng" "README.ENG"
-copy_package_file "$repo_root/HISTORY" "HISTORY"
+copy_package_cp866_file "$repo_root/README" "README"
+copy_package_cp866_file "$repo_root/README.eng" "README.ENG"
+copy_package_cp866_file "$repo_root/HISTORY" "HISTORY"
 
 if [ -d "$examples_dir" ]; then
-  seen_example_names="|"
+  seen_example_paths="|EXAMPLES|"
   while IFS= read -r example_path; do
-    example_name="$(basename "$example_path")"
-    validate_83 "$example_name"
-    upper_name="$(printf '%s' "$example_name" | tr '[:lower:]' '[:upper:]')"
-    if [[ "$seen_example_names" == *"|$upper_name|"* ]]; then
-      echo "Error: duplicate 8.3 example name after uppercasing: $upper_name" >&2
+    rel_path="${example_path#$examples_dir/}"
+    upper_path="$(path_to_83_upper "$rel_path")"
+    if [[ "$seen_example_paths" == *"|$upper_path|"* ]]; then
+      echo "Error: duplicate 8.3 example path after uppercasing: $upper_path" >&2
       exit 1
     fi
-    seen_example_names="$seen_example_names$upper_name|"
-    cp "$example_path" "$package_dir/EXAMPLES/$upper_name"
-  done < <(find "$examples_dir" -maxdepth 1 -type f ! -name '.*' | sort)
+    seen_example_paths="$seen_example_paths$upper_path|"
+    mkdir -p "$package_dir/EXAMPLES/$upper_path"
+  done < <(find "$examples_dir" -mindepth 1 -type d ! -path '*/.*' | sort)
+
+  while IFS= read -r example_path; do
+    rel_path="${example_path#$examples_dir/}"
+    upper_path="$(path_to_83_upper "$rel_path")"
+    if [[ "$seen_example_paths" == *"|$upper_path|"* ]]; then
+      echo "Error: duplicate 8.3 example path after uppercasing: $upper_path" >&2
+      exit 1
+    fi
+    seen_example_paths="$seen_example_paths$upper_path|"
+    mkdir -p "$(dirname "$package_dir/EXAMPLES/$upper_path")"
+    cp "$example_path" "$package_dir/EXAMPLES/$upper_path"
+  done < <(find "$examples_dir" -type f ! -path '*/.*' | sort)
 fi
 
 rm -f "$zip_path"
