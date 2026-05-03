@@ -72,6 +72,27 @@ copy_package_cp866_file() {
   iconv -f UTF-8 -t CP866 "$src" > "$package_dir/$dst"
 }
 
+is_example_text_file() {
+  local name
+  name="$(basename "$1" | tr '[:lower:]' '[:upper:]')"
+
+  case "$name" in
+    *.ASM|*.BAT|MAKEFILE) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+copy_example_file() {
+  local src="$1"
+  local dst="$2"
+
+  if is_example_text_file "$dst"; then
+    awk '{ sub(/\r$/, ""); printf "%s\r", $0 }' "$src" > "$package_dir/EXAMPLES/$dst"
+  else
+    cp "$src" "$package_dir/EXAMPLES/$dst"
+  fi
+}
+
 if [ ! -f "$exe_path" ]; then
   make -C "$repo_root"
 fi
@@ -115,7 +136,7 @@ if [ -d "$examples_dir" ]; then
     fi
     seen_example_paths="$seen_example_paths$upper_path|"
     mkdir -p "$(dirname "$package_dir/EXAMPLES/$upper_path")"
-    cp "$example_path" "$package_dir/EXAMPLES/$upper_path"
+    copy_example_file "$example_path" "$upper_path"
   done < <(find "$examples_dir" -type f ! -path '*/.*' | sort)
 fi
 

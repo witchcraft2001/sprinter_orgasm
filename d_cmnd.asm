@@ -280,7 +280,9 @@ _include	push hl
 		call SaveCurPath
 		ld hl,DataBuf
 		call LoadFile
+		push hl
 		call RestoreCurPath
+		pop hl
 
 		ld b,#00
 		ld a,#0d

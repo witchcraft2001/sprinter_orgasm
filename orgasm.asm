@@ -935,6 +935,8 @@ LF5             ld a,1
                 rst #10         ;открываем файл на чтение
                 jp c,Error
                 ld (OpenFile),a ;файловый манипулятор
+                xor a
+                ld (LastLineCR),a
 
                 ld bc,(InFileID);ID блока с исходниками
                 ld hl,(AdrOpenFile);адрес начала загрузки файла
@@ -1003,9 +1005,23 @@ LFconv1         ld a,b
                 or c
                 jr z,LFconv2
                 ld a,(hl)
+                cp #0d
+                jr z,LFconv4
                 cp #0a
-                jr nz,LFconv3
+                jr nz,LFconv5
+                ld a,(LastLineCR)
+                or a
+                jr nz,LFconv6
                 ld (hl),#0d
+                jr LFconv6
+LFconv4         ld a,1
+                ld (LastLineCR),a
+                jr LFconv3
+LFconv5         xor a
+                ld (LastLineCR),a
+                jr LFconv3
+LFconv6         xor a
+                ld (LastLineCR),a
 LFconv3         inc hl
                 dec bc
                 jr LFconv1
@@ -1458,6 +1474,7 @@ SaveOutLen      dw 0            ;сохраненная длина EXE-кода
 SaveExeFlag     db 0            ;сохраненный признак генерации EXE-префикса
 SaveCurDisk     db 0            ;диск перед загрузкой INCLUDE
 SaveCurDir      ds 128          ;каталог перед загрузкой INCLUDE
+LastLineCR      db 0            ;предыдущий прочитанный байт был CR
 NumOpenFile     db #00          ;порядковый номер открываемого файла
 CurrentFile     db #ff          ;номер текущего ассемблируемого файла
 AdrOpenFile     dw #bfff        ;адрес начала загрузки очередного файла -1

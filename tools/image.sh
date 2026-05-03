@@ -78,6 +78,29 @@ copy_cp866_file() {
   mcopy -i "$image_path" -o "$converted" "::$dst"
 }
 
+is_example_text_file() {
+  local name
+  name="$(basename "$1" | tr '[:lower:]' '[:upper:]')"
+
+  case "$name" in
+    *.ASM|*.BAT|MAKEFILE) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+copy_example_file() {
+  local src="$1"
+  local dst="$2"
+  local converted="$tmp_dir/$(basename "$dst").cr"
+
+  if is_example_text_file "$dst"; then
+    awk '{ sub(/\r$/, ""); printf "%s\r", $0 }' "$src" > "$converted"
+    mcopy -i "$image_path" -o "$converted" "::/EXAMPLES/$dst"
+  else
+    mcopy -i "$image_path" -o "$src" "::/EXAMPLES/$dst"
+  fi
+}
+
 if [ ! -f "$exe_path" ]; then
   make -C "$repo_root"
 fi
@@ -118,7 +141,7 @@ if [ -d "$examples_dir" ]; then
       exit 1
     fi
     seen_example_paths="$seen_example_paths$upper_path|"
-    mcopy -i "$image_path" -o "$example_path" "::/EXAMPLES/$upper_path"
+    copy_example_file "$example_path" "$upper_path"
   done < <(find "$examples_dir" -type f ! -path '*/.*' | sort)
 fi
 
