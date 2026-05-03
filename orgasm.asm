@@ -3,8 +3,8 @@
 ;                  │║   ║│├╬══╦╩┤│║  ─╦┬├╬═══╬┤└╩═══╦┐│║ ║ ║│
 ;                  └╩═══╩┘└╩  ╚═┘└╩═══╩┘└╩   ╩┘└╩═══╩┘└╩   ╩┘
 ;
-; OrgAsm v0.28 is 2-pass assembler for Sprinter computer that was created
-; by Igor Zhadinets in late 2002 - early 2003. Source code of v0.28 was
+; OrgAsm v0.29 is 2-pass assembler for Sprinter computer that was created
+; by Igor Zhadinets in late 2002 - early 2003. Source code of historical v0.28 was
 ; reverse-engineered back from binary v0.28beta and based on availavle
 ; source code of older version 0.15 (newer source codes were lost).
 ; Recreation work was done by Shaos <me@shaos.net> in December 2020.
@@ -1686,11 +1686,9 @@ FreeMem1        db "Free memory:  "
 VarFMem         db "     " ; для zmac переделано - было ds 5," " (Shaos)
                 db "kB",13,10,0
 Hello           db 13,10
-                db "                                                       ",13,10
-                db "OrgAsm v0.28beta <Created by Alpha Studio>",13,10
-                db "Last edition 15.12.2002 (BLR 00:21)",13,10
-                db "FidoNet: 2:454/5.18 to Igor Zhadinets; e-mail: igor_ast@tut.by",13,10,10,0
-Help            db 'OrgAsm [drv:\path\]inFile[.ext] [drv:\path\outFile.ext] [/options]',13,10,10
+                db "OrgAsm v0.29",13,10,0
+Help            db "by Igor Zhadinets <Alpha Studio> and Dmitry Mikhalchenkov",13,10,10
+                db 'OrgAsm [drv:\path\]inFile[.ext] [drv:\path\outFile.ext] [/options]',13,10,10
                 db '/E - create EXE-prefix  ',13,10
                 db '/C - upper Case significant in symbols',13,10
                 db '/L[:file] - create Error log on errors',13,10

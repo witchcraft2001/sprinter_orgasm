@@ -1,6 +1,6 @@
 
-OrgAsm v0.28 beta 
-Created by Alpha Studio, 2003.
+OrgAsm v0.29
+Created by Alpha Studio. Current author: Dmitry Mikhalchenkov.
 
 
 OrgASM is a two-passage assembler for Sprinter computer which supports  undocumented Z80 commands.
@@ -21,8 +21,19 @@ OrgAsm [drv:\path\]inFile[.ext] [drv:\path\outFile.ext] [/options]
 
   /E - EXE-prefix creation
   /C - upper Case significant in symbols
+  /L[:file] - create Error log on errors
   /M - create Symbol table
   /S - clear screen
+
+The /L option writes compiler errors to a log file only when errors are
+detected. Without an explicit name, the log name is built from the input file
+with the .ERR extension. Use /L=ERRORS.ERR or /L:ERRORS.ERR to select a
+specific file. Log records use the compact format:
+
+  file:line: error message
+  source line
+
+Errors from the main source and INCLUDE files are written to the same log.
 
 
 	Line format.
@@ -116,7 +127,5 @@ Mess2:	db	"Text 2 ..."
 .Text:	db	"Hello world ! ;)",0Dh,0Ah,0
 
 ---
-  Last edition 15.09.2002 (BLR 22:08)
-  FidoNet: 2:454/5.18 to Igor Zhadinets
-  e-mail: igor_ast@tut.by
-
+  Original author: Igor Zhadinets
+  Current author: Dmitry Mikhalchenkov
