@@ -7,7 +7,9 @@ OrgASM is a two-passage assembler for Sprinter computer which supports  undocume
 
 The program required a Sprinter computer with BIOS 3.xx and DSS 1.5x.
 
-Only a brief information about this beta version. And check out 'HISTORY.ENG' file.
+Only a brief information about this beta version. The full current manual is
+available in docs/en/manual.md. The Russian manual is available in
+docs/ru/manual.md.
 
 
 	Executing.

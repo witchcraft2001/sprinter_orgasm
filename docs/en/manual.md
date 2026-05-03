@@ -1,0 +1,212 @@
+# OrgAsm Manual
+
+OrgAsm v0.29 is a two-pass Z80 assembler for the Sprinter computer under DSS. The historical author is Igor Zhadinets. The current version is maintained by Dmitry Mikhalchenkov.
+
+## Requirements
+
+Running `ORGASM.EXE` requires the target Sprinter environment with BIOS 3.xx and DSS Estex. Local source builds use `sjasmplus`:
+
+```sh
+make
+make dist
+```
+
+`make` creates `out/orgasm.exe`. `make dist` creates the floppy image `distr/orgasm.img` and the zip distribution `distr/orgasm.zip`.
+
+## Command Line
+
+```text
+OrgAsm [drv:\path\]inFile[.ext] [drv:\path\outFile.ext] [/options]
+```
+
+If the input file has no extension, `.asm` is appended. If no output file is specified, OrgAsm creates one next to the source with the `.exe` extension.
+
+Options:
+
+- `/E` or `-E` - create an EXE prefix. The load address comes from the first `ORG`, the entry point from `ENTRY`, and the stack from `STACK`.
+- `/C` or `-C` - make letter case significant in label names.
+- `/L`, `/L:name.err`, `/L=name.err` - create an error log only when errors are detected.
+- `/M` - create a symbol table.
+- `/S` - clear the screen before running.
+
+## Diagnostics
+
+Compiler errors are printed on screen and prevent output generation. With `/L`, errors from the main source and all `INCLUDE` files are written to one log:
+
+```text
+file.asm:12: Syntax error
+    source line
+```
+
+The `.ERR` file is created only after the first error.
+
+## Source Line Format
+
+```asm
+Label           Instruction ; comment
+```
+
+A label must start in the first column. An instruction must not start in the first column. Multiple instructions can be written on one line with `:`, except lines containing `INCLUDE` and `INCBIN`:
+
+```asm
+Loop:           ld (hl),a: inc hl: djnz Loop
+```
+
+Label names may contain Latin letters, digits, and `_`, but cannot start with a digit.
+
+## Local Labels
+
+A local label starts with a dot and is visible until the next regular label:
+
+```asm
+Test1:          ld b,16
+.loop:          inc hl
+                djnz .loop
+
+Test2:          ld b,32
+.loop:          inc de
+                djnz .loop
+```
+
+A local label can also be referenced by its full name, for example `Test1.loop`.
+
+## Numbers and Expressions
+
+Decimal, hexadecimal, and binary numbers are supported:
+
+```asm
+#a000
+0C000h
+0x8F12
+%00110011
+10010110b
+0b01010101
+```
+
+`$` means the address of the current instruction. Characters in single or double quotes evaluate to their character code.
+
+Supported operators:
+
+- unary: `!`, `^`, `-`, `+`, `++`, `--`, `<`, `>`, `?Label`;
+- shifts: `<<`, `>>`;
+- arithmetic: `*`, `/`, `%`, `\`, `+`, `-`;
+- comparisons: `<`, `=`, `>`, `<=`, `!=`, `<>`, `>=`;
+- bitwise: `!`, `&`, `|`.
+
+Expression results are 16-bit values; on overflow, the lower 16 bits are used.
+
+## Supported Directives
+
+### ORG
+
+```asm
+                org #8100
+```
+
+Sets the code placement address. If `ORG` is missing, `#8100` is used.
+
+### ENTRY
+
+```asm
+                entry Start
+```
+
+Sets the entry point for the EXE prefix. Without `ENTRY`, the load address is used.
+
+### STACK
+
+```asm
+                stack #bfff
+```
+
+Sets SP for the EXE prefix. The default value is `#bfff`.
+
+### PHASE / DEPHASE
+
+```asm
+                phase #4000
+Relocated:      ret
+                dephase
+```
+
+Changes the assembly address without changing the physical object-code write address. Nested `PHASE` and `ORG` inside the block are not allowed.
+
+### EQU
+
+```asm
+PChars          equ #5c
+```
+
+Assigns a constant value to a label. The expression must not use forward references.
+
+### DB / DEFB
+
+```asm
+Text:           db "Hello",13,10,0
+```
+
+Generates bytes and strings.
+
+### DW / DEFW
+
+```asm
+Table:          dw Start,Exit
+```
+
+Generates 16-bit little-endian words.
+
+### DS / DEFS
+
+```asm
+Buffer:         ds 256
+Spaces:         ds 10," "
+```
+
+Reserves and fills memory. Without the second parameter, zero is used.
+
+### INCLUDE
+
+```asm
+                include "inc/text.asm"
+```
+
+Includes another source file. If the extension is missing, `.asm` is appended. Nested `INCLUDE` files are supported.
+
+### INCBIN
+
+```asm
+Sprite:         incbin "sprite.bin"
+Part:           incbin "data.bin",16,32
+```
+
+Inserts a whole binary file or a range selected by offset and length.
+
+## Z80 Syntax Notes
+
+OrgAsm supports documented Z80 instructions and several common extensions:
+
+- `in a,(bc)` and `out (bc),e` are accepted as variants of `(c)`;
+- `(ix)` and `(iy)` are accepted as `(ix+0)` and `(iy+0)`;
+- `EX AF,AF'` can be written as `EX AF,AF` or `EXA`;
+- `SLI` and `SLL` are synonyms;
+- index register halves `XH`, `XL`, `YH`, `YL` are supported, as are `HX`, `LX`, `HY`, `LY`.
+
+## Examples
+
+Examples are stored in `examples/`:
+
+- `HELLO` - minimal program;
+- `LOCAL` - local labels;
+- `INCL` - `INCLUDE` from a subdirectory;
+- `MIXED` - several include files from different directories;
+- `ERRORS` - intentionally invalid example for checking `/L`.
+
+Each example directory contains a Sprinter make `makefile` and a `make.bat` file for users without make.
+
+## Distribution
+
+The zip distribution contains `ORGASM.EXE`, `README`, `README.ENG`, `HISTORY`, `EXAMPLES/`, and `DOCS/`. Text files in the distribution are converted to CP866. The floppy image contains the executable, README/HISTORY, and examples; `DOCS/` is not included in the floppy image.
+
+## Current Limitations
+
+v0.29 does not yet support `SAVE`/`SAVEBIN`, conditional compilation, banked output, `EXPORT`/`IMPORT`, macros, or the full sjasmplus-compatible preprocessor. These features are planned separately.

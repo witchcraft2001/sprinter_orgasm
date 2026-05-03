@@ -19,6 +19,7 @@ zip_path="${2:-$repo_root/distr/orgasm.zip}"
 package_root="$repo_root/out/package"
 package_dir="$package_root/ORGASM"
 examples_dir="$repo_root/examples"
+docs_dir="$repo_root/docs"
 
 validate_83() {
   local name="$1"
@@ -93,6 +94,15 @@ copy_example_file() {
   fi
 }
 
+copy_doc_file() {
+  local src="$1"
+  local dst="$2"
+
+  mkdir -p "$(dirname "$package_dir/DOCS/$dst")"
+  validate_83 "$(basename "$dst")"
+  iconv -f UTF-8 -t CP866 "$src" > "$package_dir/DOCS/$dst"
+}
+
 if [ ! -f "$exe_path" ]; then
   make -C "$repo_root"
 fi
@@ -138,6 +148,32 @@ if [ -d "$examples_dir" ]; then
     mkdir -p "$(dirname "$package_dir/EXAMPLES/$upper_path")"
     copy_example_file "$example_path" "$upper_path"
   done < <(find "$examples_dir" -type f ! -path '*/.*' | sort)
+fi
+
+if [ -d "$docs_dir" ]; then
+  mkdir -p "$package_dir/DOCS"
+  seen_doc_paths="|DOCS|"
+  while IFS= read -r doc_path; do
+    rel_path="${doc_path#$docs_dir/}"
+    upper_path="$(path_to_83_upper "$rel_path")"
+    if [[ "$seen_doc_paths" == *"|$upper_path|"* ]]; then
+      echo "Error: duplicate 8.3 docs path after uppercasing: $upper_path" >&2
+      exit 1
+    fi
+    seen_doc_paths="$seen_doc_paths$upper_path|"
+    mkdir -p "$package_dir/DOCS/$upper_path"
+  done < <(find "$docs_dir" -mindepth 1 -type d ! -path '*/.*' | sort)
+
+  while IFS= read -r doc_path; do
+    rel_path="${doc_path#$docs_dir/}"
+    upper_path="$(path_to_83_upper "$rel_path")"
+    if [[ "$seen_doc_paths" == *"|$upper_path|"* ]]; then
+      echo "Error: duplicate 8.3 docs path after uppercasing: $upper_path" >&2
+      exit 1
+    fi
+    seen_doc_paths="$seen_doc_paths$upper_path|"
+    copy_doc_file "$doc_path" "$upper_path"
+  done < <(find "$docs_dir" -type f ! -path '*/.*' | sort)
 fi
 
 rm -f "$zip_path"

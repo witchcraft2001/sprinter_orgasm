@@ -2,7 +2,27 @@
 
 This file tracks the staged work needed to add practical sjasmplus source compatibility to OrgAsm. Mark items as complete as they are implemented and verified.
 
-## Stage 1: Self-Host Build Minimum
+## Stage 1: Documentation Baseline
+
+- [x] Create `docs/ru/` and `docs/en/` for the full OrgAsm manual.
+- [x] Use `README` and `README.eng` as source material, but verify all behavior against the current assembler before copying it into the manual.
+- [x] Document the current implemented assembler before adding new compatibility features:
+  - command-line usage and options
+  - legacy output modes, including `/E` and `/L`
+  - diagnostics and error log behavior
+  - supported directives
+  - expressions
+  - labels and local labels
+  - `INCLUDE` and `INCBIN`
+  - examples
+  - build, image, and distribution workflow
+- [x] Keep README files concise after the full manual exists, with links or pointers to the complete documentation.
+- [x] Require every new feature or compatibility addition to update both Russian and English docs in the same change set.
+- [x] Store source documentation as UTF-8 in the repository, then convert it to CP866 when copying into the distribution archive.
+- [x] Copy documentation into the distribution archive under `DOCS/`, but do not include `DOCS/` in the floppy image.
+- [x] Add documentation review to the verification checklist for each completed stage.
+
+## Stage 2: Self-Host Build Minimum
 
 - [ ] Add `SAVE` and `SAVEBIN` directives compatible with the common sjasmplus form:
   - `SAVEBIN "file.bin", start, size`
@@ -14,11 +34,12 @@ This file tracks the staged work needed to add practical sjasmplus source compat
   - `BYTE` as `DB`
   - `WORD` as `DW`
   - `BLOCK size[,fill]` as `DS size[,fill]`
+- [ ] Add an ASM example that verifies `SAVE`/`SAVEBIN`, source-driven output, and the new data directive aliases.
 - [ ] Update `orgasm.asm` or add a small compatibility include so OrgAsm can emit its own executable image explicitly.
 - [ ] Verify self-host assembly: build OrgAsm with sjasmplus, then assemble the same source with OrgAsm and compare binaries.
-- [ ] Document the self-host build procedure in `README`, `README.eng`, and `HISTORY`.
+- [ ] Document the self-host build procedure in `docs/` in Russian and English, then update `README`, `README.eng`, and `HISTORY` as summaries/pointers.
 
-## Stage 2: Conditional Compilation
+## Stage 3: Conditional Compilation
 
 - [ ] Implement a preprocessor-level conditional stack before normal line parsing.
 - [ ] Support `DEFINE name value` and `UNDEFINE name`.
@@ -28,16 +49,20 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 - [ ] Support colon-separated conditional directives, for example:
   - `IFNDEF NEW_VERSION : DEFINE NEW_VERSION 1 : ENDIF`
 - [ ] Add examples/tests for nested conditions and invalid code inside skipped branches.
+- [ ] Add an ASM example that verifies the implemented conditional compilation directives.
+- [ ] Document conditional compilation syntax and examples in `docs/` in Russian and English.
 
-## Stage 3: TASM Source Compatibility Subset
+## Stage 4: TASM Source Compatibility Subset
 
 - [ ] Add `DISP` and `ENT`, mapping to `PHASE`/`DEPHASE` only if the semantics match.
 - [ ] Add `DUP` and `EDUP` block repetition.
 - [ ] Add `DEFD`/`DD` for little-endian 32-bit data.
 - [ ] Add numeric compatibility where needed, including grouped binary literals such as `%0100'0000`.
 - [ ] Review `/Users/dmitry/dev/zx/sprinter/sources/tasm_071/TASM` after each feature and add focused regression examples.
+- [ ] Add ASM examples that verify every new TASM compatibility directive or syntax form.
+- [ ] Document every newly supported compatibility directive and numeric format in `docs/` in Russian and English.
 
-## Stage 4: Banked Project Output
+## Stage 5: Banked Project Output
 
 - [ ] Introduce an output backend boundary so instruction/data emission goes through shared `EmitByte`/`EmitBlock` routines instead of directly assuming one linear output buffer.
 - [ ] Keep the existing linear output backend for legacy builds.
@@ -55,8 +80,10 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 - [ ] Add `SAVEDEV "file", page, offset, size` for saving virtual memory across page boundaries.
 - [ ] Ensure `SAVEBIN` in device mode saves from the currently mapped virtual memory, matching sjasmplus-style usage.
 - [ ] Add regression examples that assemble one source into multiple 16K page `.bin` files.
+- [ ] Add an ASM example that verifies banked output, page mapping, and multi-file binary saving.
+- [ ] Document the banked memory model, page mapping, page-aware labels, and output directives in `docs/` in Russian and English.
 
-## Stage 5: Symbol Export and Multi-Stage Builds
+## Stage 6: Symbol Export and Multi-Stage Builds
 
 - [ ] Add `EXPORT label` for explicitly exported symbols.
 - [ ] Add a text symbol export format that can be included by another source, for example:
@@ -66,18 +93,26 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 - [ ] Add a `LABELSLIST "file"` style output for debugger/emulator tooling, including page and address for regular labels.
 - [ ] Add safeguards against stale symbol imports where feasible, such as optional source/version comments in generated symbol files.
 - [ ] Document that banked single-project assembly is preferred for tightly coupled code, while exported symbols are intended for libraries or staged builds.
+- [ ] Add ASM examples that verify exported symbols and imported/generated symbol files.
+- [ ] Document export/import workflows and symbol file formats in `docs/` in Russian and English.
 
-## Stage 6: Extended sjasmplus Subset
+## Stage 7: Extended sjasmplus Subset
 
 - [ ] Evaluate `OUTPUT`/`OUTEND` support or map it to the new output-range mechanism.
 - [ ] Add useful diagnostics directives if needed: `DISPLAY`, `ASSERT`, `ERROR`, and `WARNING`.
 - [ ] Decide whether `ALIGN` is needed separately from `BLOCK`.
+- [ ] Define a deliberate boundary for unsupported sjasmplus features, especially `LUA`, `ENDLUA`, and `INCLUDELUA`.
 - [ ] Consider macro support only after the previous stages are stable.
+- [ ] Add ASM examples for every newly supported extended sjasmplus directive.
+- [ ] Document the supported sjasmplus subset and explicitly unsupported features in `docs/` in Russian and English.
 
 ## Verification Checklist
 
 - [ ] `make` builds `out/orgasm.exe`.
 - [ ] `make dist` builds distribution artifacts.
 - [ ] Existing examples still compile as expected.
+- [ ] Every stage with compiler behavior changes includes at least one ASM example that exercises the new behavior.
 - [ ] `examples/ERRORS` still produces useful `/L` diagnostics only when errors are present.
 - [ ] Self-host output is byte-for-byte identical or differences are documented.
+- [ ] Russian and English documentation in `docs/` is updated for every changed user-visible feature.
+- [ ] Distribution archive includes CP866-converted `DOCS/`; floppy image does not include `DOCS/`.
