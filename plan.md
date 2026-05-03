@@ -22,7 +22,7 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 - [x] Copy documentation into the distribution archive under `DOCS/`, but do not include `DOCS/` in the floppy image.
 - [x] Add documentation review to the verification checklist for each completed stage.
 
-## Stage 2: Self-Host Build Minimum
+## Stage 2: Source-Driven Output Minimum
 
 - [x] Add `SAVE` and `SAVEBIN` directives compatible with the common sjasmplus form:
   - `SAVEBIN "file.bin", start, size`
@@ -35,22 +35,23 @@ This file tracks the staged work needed to add practical sjasmplus source compat
   - `WORD` as `DW`
   - `BLOCK size[,fill]` as `DS size[,fill]`
 - [x] Add an ASM example that verifies `SAVE`/`SAVEBIN`, source-driven output, and the new data directive aliases.
-- [x] Update `orgasm.asm` or add a small compatibility include so OrgAsm can emit its own executable image explicitly.
-- [ ] Verify self-host assembly: build OrgAsm with sjasmplus, then assemble the same source with OrgAsm and compare binaries.
-- [x] Document the self-host build procedure in `docs/` in Russian and English, then update `README`, `README.eng`, and `HISTORY` as summaries/pointers.
+- [x] Update `orgasm.asm` or add a small compatibility include so OrgAsm can emit executable images explicitly.
+- [ ] Verify OrgAsm-on-OrgAsm assembly: build OrgAsm with sjasmplus, then assemble the same source with OrgAsm and compare binaries.
+- [x] Document `SAVE`/`SAVEBIN`, `/N`, and data aliases in `docs/` in Russian and English, then update `README`, `README.eng`, and `HISTORY` as summaries/pointers.
 
 ## Stage 3: Conditional Compilation
 
-- [ ] Implement a preprocessor-level conditional stack before normal line parsing.
-- [ ] Support `DEFINE name value` and `UNDEFINE name`.
-- [ ] Support `IF expr`, `IFN expr`, `IFDEF name`, and `IFNDEF name`.
-- [ ] Support `ELSEIF expr`, `ELSE`, and `ENDIF`.
-- [ ] Ensure inactive branches are skipped without parsing labels, mnemonics, or invalid code.
+- [x] Implement a preprocessor-level conditional stack before normal line parsing.
+- [x] Support `DEFINE name value`.
+- [x] Support `UNDEFINE name`.
+- [x] Support `IF expr`, `IFN expr`, `IFDEF name`, and `IFNDEF name`.
+- [x] Support `ELSEIF expr`, `ELSE`, and `ENDIF`.
+- [x] Ensure inactive branches are skipped without parsing labels, mnemonics, or invalid code.
 - [ ] Support colon-separated conditional directives, for example:
   - `IFNDEF NEW_VERSION : DEFINE NEW_VERSION 1 : ENDIF`
-- [ ] Add examples/tests for nested conditions and invalid code inside skipped branches.
-- [ ] Add an ASM example that verifies the implemented conditional compilation directives.
-- [ ] Document conditional compilation syntax and examples in `docs/` in Russian and English.
+- [ ] Add examples/tests for nested conditions beyond line-oriented inactive branch skipping.
+- [x] Add an ASM example that verifies the implemented conditional compilation directives.
+- [x] Document conditional compilation syntax and examples in `docs/` in Russian and English.
 
 ## Stage 4: TASM Source Compatibility Subset
 
@@ -113,6 +114,6 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 - [ ] Existing examples still compile as expected.
 - [ ] Every stage with compiler behavior changes includes at least one ASM example that exercises the new behavior.
 - [ ] `examples/ERRORS` still produces useful `/L` diagnostics only when errors are present.
-- [ ] Self-host output is byte-for-byte identical or differences are documented.
+- [ ] OrgAsm-on-OrgAsm output is byte-for-byte identical or differences are documented.
 - [ ] Russian and English documentation in `docs/` is updated for every changed user-visible feature.
 - [ ] Distribution archive includes CP866-converted `DOCS/`; floppy image does not include `DOCS/`.

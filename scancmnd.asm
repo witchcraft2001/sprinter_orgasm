@@ -8,7 +8,7 @@
 ;		A  - первый символ мнемоники (команды)
 ;Выход: HL - адрес начала следующей строки / команды
 ;
-ScanCmnd	ld b,8		;max длина мнемоники + 1
+ScanCmnd	ld b,10		;max длина мнемоники + 1
 		ld de,CmndBuf	;рабочий буфер
 SC6		dec b
 		jr z,SC10
@@ -370,6 +370,8 @@ TabCmnd		db 7,"ADC",#80
 		dw _dec
 		db 8,"DEFB",#81
 		dw _db
+		db 10,"DEFINE",#81
+		dw _define
 		db 8,"DEFS",#81
 		dw _ds
 		db 8,"DEFW",#81
@@ -386,6 +388,12 @@ TabCmnd		db 7,"ADC",#80
 		dw _dw
 		db 6,"EI",1
 		db #fb,#00
+		db 8,"ELSE",#81
+		dw _else
+		db 10,"ELSEIF",#81
+		dw _elseif
+		db 9,"ENDIF",#81
+		dw _endif
 		db 9,"ENTRY",#81	; добавлено в v0.2X
 		dw _entry		; добавлено в v0.2X
 		db 6,"EX",#80
@@ -396,6 +404,14 @@ TabCmnd		db 7,"ADC",#80
 		db #d9,#00
 		db 8,"HALT",1
 		db #76,#00
+		db 6,"IF",#81
+		dw _if
+		db 9,"IFDEF",#81
+		dw _ifdef
+		db 7,"IFN",#81
+		dw _ifn
+		db 10,"IFNDEF",#81
+		dw _ifndef
 		db 6,"IM",#80
 		dw _im
 		db 6,"IN",#80
@@ -508,6 +524,8 @@ TabCmnd		db 7,"ADC",#80
 		dw _stack		; добавлено в v0.2X
 		db 7,"SUB",#80
 		dw _sub
+		db 12,"UNDEFINE",#81
+		dw _undefine
 		db 8,"WORD",#81
 		dw _dw
 		db 7,"XOR",#80

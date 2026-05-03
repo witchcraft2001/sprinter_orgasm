@@ -62,6 +62,8 @@ XH, XL, YH, YL or HX, LX, HY, LY - available
 
 ORG, PHASE, DEPHASE, EQU, DEFB (DB, BYTE), DEFW (DW, WORD),
 DEFS (DS, BLOCK), INCLUDE, INCBIN, SAVE, SAVEBIN.
+DEFINE, IF, IFN, IFDEF, IFNDEF, ELSEIF, ELSE, ENDIF.
+UNDEFINE.
 
 About OGR:
 A program will be compiled from 8100h without ORG directive.

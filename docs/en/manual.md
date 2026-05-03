@@ -197,6 +197,31 @@ End:
 
 Saves a range of compiled code to a binary file after the second pass succeeds. Writes are deferred until the end of compilation, so failed builds do not create partial files. Use `/N` when the source should produce files only through explicit `SAVE`/`SAVEBIN` directives.
 
+### Conditional Compilation
+
+```asm
+                define BUILD 1
+
+                ifdef BUILD
+Start:          byte #3e,#42
+                else
+Skipped bad source line
+                endif
+
+                ifn 0
+                byte #32
+                word Value
+                endif
+
+                if 0
+Broken:         db ?
+                elseif BUILD
+Value:          byte #24
+                endif
+```
+
+`DEFINE name value` adds a numeric name that can be used in expressions and `IFDEF` checks; `UNDEFINE name` removes a previously defined name. OrgAsm supports `IF expr`, `IFN expr`, `IFDEF name`, `IFNDEF name`, `ELSEIF expr`, `ELSE`, and `ENDIF`. Condition expressions must be resolvable at the directive location. Inactive branches are skipped to the end of the line without parsing labels, mnemonics, or invalid code. Conditional directives should start as regular line commands; single-line chains through `:` are not intended for nested conditional parsing yet.
+
 ## Z80 Syntax Notes
 
 OrgAsm supports documented Z80 instructions and several common extensions:
@@ -216,6 +241,7 @@ Examples are stored in `examples/`:
 - `INCL` - `INCLUDE` from a subdirectory;
 - `MIXED` - several include files from different directories;
 - `SAVE` - `SAVE`/`SAVEBIN`, `/N`, `BYTE`, `WORD`, `BLOCK`;
+- `COND` - conditional compilation and inactive branch skipping;
 - `ERRORS` - intentionally invalid example for checking `/L`.
 
 Each example directory contains a Sprinter make `makefile` and a `make.bat` file for users without make.
