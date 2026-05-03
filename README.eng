@@ -25,6 +25,7 @@ OrgAsm [drv:\path\]inFile[.ext] [drv:\path\outFile.ext] [/options]
   /C - upper Case significant in symbols
   /L[:file] - create Error log on errors
   /M - create Symbol table
+  /N - no implicit output file
   /S - clear screen
 
 The /L option writes compiler errors to a log file only when errors are
@@ -36,6 +37,9 @@ specific file. Log records use the compact format:
   source line
 
 Errors from the main source and INCLUDE files are written to the same log.
+
+The /N option disables the implicit command-line output file. Use it for
+sources where all output files are produced by SAVE or SAVEBIN directives.
 
 
 	Line format.
@@ -56,7 +60,8 @@ XH, XL, YH, YL or HX, LX, HY, LY - available
 	OrgASM directives.
       ------------------
 
-ORG, PHASE, DEPHASE, EQU, DEFB (DB), DEFW (DW), DEFS (DS), INCLUDE.
+ORG, PHASE, DEPHASE, EQU, DEFB (DB, BYTE), DEFW (DW, WORD),
+DEFS (DS, BLOCK), INCLUDE, INCBIN, SAVE, SAVEBIN.
 
 About OGR:
 A program will be compiled from 8100h without ORG directive.

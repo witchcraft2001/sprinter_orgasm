@@ -244,6 +244,79 @@ _ds2		dec hl
 		inc hl
 		ld b,0
 		ret
+;SAVE/SAVEBIN "file",start,size
+_savebin	call SpecFile
+		cp #2C
+		jp nz,SkipStrC
+		ld a,(hl)
+		inc hl
+		call GetVar
+		ld (SaveStartTmp),de
+		cp #20
+		call z,SkipSpace
+		cp #09
+		call z,SkipSpace
+		cp #2C
+		jp nz,SkipStrC
+		ld a,(hl)
+		inc hl
+		call GetVar
+		ld (SaveLenTmp),de
+		cp #20
+		call z,SkipSpace
+		cp #09
+		call z,SkipSpace
+		cp #0D
+		jr z,SVB1
+		cp ":"
+		jr z,SVB1
+		cp ";"
+		jp nz,SkipStrC
+SVB1		ld c,a
+		ld a,(Pass)
+		inc a
+		jr nz,SVB5
+		ld a,(SaveReqCount)
+		cp MaxSaveReq
+		jr c,SVB2
+		ld a,c
+		ld b,SyntaxEr
+		jp SkipStrC
+SVB2		inc a
+		ld (SaveReqCount),a
+		push hl
+		ld hl,(SaveReqPtr)
+		push hl
+		ld de,(SaveStartTmp)
+		ld (hl),e
+		inc hl
+		ld (hl),d
+		inc hl
+		ld de,(SaveLenTmp)
+		ld (hl),e
+		inc hl
+		ld (hl),d
+		inc hl
+		ld de,DataBuf
+		ld b,128
+SVB3		ld a,(de)
+		ld (hl),a
+		inc hl
+		inc de
+		or a
+		jr z,SVB4
+		djnz SVB3
+		dec hl
+		xor a
+		ld (hl),a
+SVB4		pop hl
+		ld de,SaveReqSize
+		add hl,de
+		ld (SaveReqPtr),hl
+		pop hl
+SVB5		ld a,c
+		ld b,0
+		ret
 ;INCLUDE...
 _include	push hl
 		call SpecFile

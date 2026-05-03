@@ -342,6 +342,10 @@ TabCmnd		db 7,"ADC",#80
 		dw _and
 		db 7,"BIT",#80
 		dw _bit
+		db 9,"BLOCK",#81
+		dw _ds
+		db 8,"BYTE",#81
+		dw _db
 		db 8,"CALL",#80
 		dw _call
 		db 7,"CCF",1
@@ -480,6 +484,10 @@ TabCmnd		db 7,"ADC",#80
 		db #ed,#67
 		db 7,"RST",#80
 		dw _rst
+		db 8,"SAVE",#81
+		dw _savebin
+		db 11,"SAVEBIN",#81
+		dw _savebin
 		db 7,"SBC",#80
 		dw _sbc
 		db 7,"SCF",1
@@ -500,6 +508,8 @@ TabCmnd		db 7,"ADC",#80
 		dw _stack		; добавлено в v0.2X
 		db 7,"SUB",#80
 		dw _sub
+		db 8,"WORD",#81
+		dw _dw
 		db 7,"XOR",#80
 		dw _xor
 		db #00

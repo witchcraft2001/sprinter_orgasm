@@ -39,6 +39,7 @@ Start           equ #4200
 CurDisk         equ #02
 ChDisk          equ #01
 Create          equ #0a
+Delete          equ #0e
 Open            equ #11
 Close           equ #12
 Read_           equ #13
@@ -178,6 +179,8 @@ ComStr10        ld c,#ff
                 jr z,ComStr15
                 cp "L"
                 jr z,ComStr16
+                cp "N"
+                jr z,ComStr23
                 cp "E"
                 ret nz
                 ld a,c
@@ -258,6 +261,10 @@ ComStr22        xor a
                 ld (de),a
                 dec a
                 ld (ErrNameFlag),a
+                jr ComStr13
+
+ComStr23        ld a,c
+                ld (NoOutFlag),a
                 jr ComStr13
 
 ComStr14        push bc ; новое в v0.2X
@@ -602,7 +609,11 @@ AsmF3           ld c,Cursor
 ;Запись выходного файла
 ;Запись производится страницами по 16к через 3-е окно
 ;
-SaveOutF        ld hl,Saving
+SaveOutF        call SaveDirectiveFiles
+                ld a,(NoOutFlag)
+                or a
+                jr nz,SOF02
+                ld hl,Saving
                 ld c,PChars
                 rst #10         ;сообшение о записи файла
                 ld hl,(OutFAdr)
@@ -1078,6 +1089,115 @@ SOF101
                 rst #10
                 jp c,Error
 
+                xor a
+                ld (OpenFile),a
+                ret
+
+SaveDirectiveFiles
+                ld hl,SaveReqTable
+                ld (SaveReqCur),hl
+SDF0            ld hl,(SaveReqCur)
+                ld de,(SaveReqPtr)
+                or a
+                sbc hl,de
+                ret z
+                ld hl,(SaveReqCur)
+                ld e,(hl)
+                inc hl
+                ld d,(hl)
+                inc hl
+                ld (SaveStartTmp),de
+                ld e,(hl)
+                inc hl
+                ld d,(hl)
+                inc hl
+                ld (SaveLenTmp),de
+                push hl
+                ld hl,Saving
+                ld c,PChars
+                rst #10
+                pop hl
+                push hl
+                call PrString
+                pop hl
+                call SaveRangeFile
+                ld hl,(SaveReqCur)
+                ld de,SaveReqSize
+                add hl,de
+                ld (SaveReqCur),hl
+                jr SDF0
+
+SaveRangeFile  push hl
+                ld c,Delete
+                rst #10
+                pop hl
+                ld a,00100000b
+                ld c,Create
+                rst #10
+                jp c,Error
+                ld (OpenFile),a
+                ld hl,(SaveStartTmp)
+                ld de,(New1)
+                or a
+                sbc hl,de
+                ld a,h
+                and #c0
+                rlca
+                rlca
+                ld (SaveCurPage),a
+                ld a,h
+                and #3f
+                or #c0
+                ld h,a
+                ld (SaveOff),hl
+SRF1            ld hl,(SaveLenTmp)
+                ld a,h
+                or l
+                jr z,SRF4
+                ld a,(SaveCurPage)
+                ld b,a
+                ld a,(OutFileID)
+                ld c,SetWin3
+                rst #10
+                jp c,Error
+                ld hl,0
+                ld de,(SaveOff)
+                or a
+                sbc hl,de
+                ld de,(SaveLenTmp)
+                push hl
+                or a
+                sbc hl,de
+                pop hl
+                jr c,SRF2
+                jr SRF3
+SRF2            ex de,hl
+SRF3            push de
+                ld hl,(SaveOff)
+                ld a,(OpenFile)
+                ld c,Write
+                rst #10
+                jp c,Error
+                pop de
+                ld hl,(SaveLenTmp)
+                or a
+                sbc hl,de
+                ld (SaveLenTmp),hl
+                ld hl,(SaveOff)
+                add hl,de
+                ld a,h
+                or l
+                jr nz,SRF5
+                ld hl,#c000
+                ld a,(SaveCurPage)
+                inc a
+                ld (SaveCurPage),a
+SRF5            ld (SaveOff),hl
+                jr SRF1
+SRF4            ld a,(OpenFile)
+                ld c,Close
+                rst #10
+                jp c,Error
                 xor a
                 ld (OpenFile),a
                 ret
@@ -1693,6 +1813,7 @@ Help            db "by Igor Zhadinets <Alpha Studio> and Dmitry Mikhalchenkov",1
                 db '/C - upper Case significant in symbols',13,10
                 db '/L[:file] - create Error log on errors',13,10
                 db '/M - create Symbol table   ',13,10
+                db '/N - no implicit output file',13,10
                 db '/S - clear Screen',13,10,0
 PassText        db "Pass 1",13,10,0
 Scanning        db 13,10,"Scanning Symbol table...     ",13,10,0 ; новое в v0.2X
@@ -1773,6 +1894,7 @@ ErrNameFlag     db 0            ;#ff - имя файла ошибок задан
 ErrNameExt      db 0            ;#ff - в имени файла ошибок есть расширение
 ErrMsgPtr       dw 0            ;адрес текста последней ошибки
 ErrNameBuf      ds 128          ;явное имя файла ошибок
+NoOutFlag       db 0            ;#ff - не создавать неявный выходной файл
 FileNamePage    db 0            ;банк строки с именем загружаемого файла
 FileNameAdr     dw 0            ;адрес строки с именем загружаемого файла
 PhaseFlag       db 0            ;#00 - не было PHASE
@@ -1787,6 +1909,13 @@ SaveObjAdr      dw #8000        ;адрес записи байта obj-кода
 SaveOutID       dw 0            ;сохраненный ID/размер выходного кода
 SaveOutLen      dw 0            ;сохраненная длина EXE-кода
 SaveExeFlag     db 0            ;сохраненный признак генерации EXE-префикса
+SaveReqCount    db 0            ;количество директив SAVE/SAVEBIN
+SaveReqPtr      dw SaveReqTable ;следующая запись SAVE/SAVEBIN
+SaveReqCur      dw 0            ;текущая запись при сохранении
+SaveStartTmp    dw 0            ;рабочий адрес SAVE/SAVEBIN
+SaveLenTmp      dw 0            ;рабочая длина SAVE/SAVEBIN
+SaveOff         dw 0            ;рабочее смещение в окне #c000
+SaveCurPage     db 0            ;рабочая страница выходного блока
 SaveCurDisk     db 0            ;диск перед загрузкой INCLUDE
 SaveCurDir      ds 128          ;каталог перед загрузкой INCLUDE
 LastLineCR      db 0            ;предыдущий прочитанный байт был CR
@@ -1803,6 +1932,9 @@ TblLoadFile     equ #7C00 ;v0.2X;таблица загруженных файл�
                 ;+9 - банк строки с именем файла или #ff для основного файла (1)
                 ;+10 - адрес строки с именем файла (2)
 TabLabel        equ #8000       ;начало таблицы меток
+MaxSaveReq      equ 8
+SaveReqSize     equ 132
+SaveReqTable    ds SaveReqSize*MaxSaveReq
 ;FileID          equ $           ;id открытого файла (1)
 ;MemID           equ FileID+1    ;адрес таблицы выделенной памяти (2)
 ;MemID           equ $           ;адрес таблицы выделенной памяти (2)

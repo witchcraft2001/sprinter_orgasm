@@ -24,20 +24,20 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 
 ## Stage 2: Self-Host Build Minimum
 
-- [ ] Add `SAVE` and `SAVEBIN` directives compatible with the common sjasmplus form:
+- [x] Add `SAVE` and `SAVEBIN` directives compatible with the common sjasmplus form:
   - `SAVEBIN "file.bin", start, size`
   - `SAVE "file.bin", start, size`
-- [ ] Defer `SAVE`/`SAVEBIN` writes until assembly succeeds, so failed builds do not leave partial output files.
-- [ ] Add a source-driven output mode that disables the implicit command-line output file and writes only files requested by `SAVE`/`SAVEBIN`.
-- [ ] Add a command-line switch for source-driven output mode, for example `/N`, and document that `/E` remains only for the legacy implicit EXE output path.
-- [ ] Add data directive aliases used by sjasmplus/TASM-style sources:
+- [x] Defer `SAVE`/`SAVEBIN` writes until assembly succeeds, so failed builds do not leave partial output files.
+- [x] Add a source-driven output mode that disables the implicit command-line output file and writes only files requested by `SAVE`/`SAVEBIN`.
+- [x] Add a command-line switch for source-driven output mode, for example `/N`, and document that `/E` remains only for the legacy implicit EXE output path.
+- [x] Add data directive aliases used by sjasmplus/TASM-style sources:
   - `BYTE` as `DB`
   - `WORD` as `DW`
   - `BLOCK size[,fill]` as `DS size[,fill]`
-- [ ] Add an ASM example that verifies `SAVE`/`SAVEBIN`, source-driven output, and the new data directive aliases.
-- [ ] Update `orgasm.asm` or add a small compatibility include so OrgAsm can emit its own executable image explicitly.
+- [x] Add an ASM example that verifies `SAVE`/`SAVEBIN`, source-driven output, and the new data directive aliases.
+- [x] Update `orgasm.asm` or add a small compatibility include so OrgAsm can emit its own executable image explicitly.
 - [ ] Verify self-host assembly: build OrgAsm with sjasmplus, then assemble the same source with OrgAsm and compare binaries.
-- [ ] Document the self-host build procedure in `docs/` in Russian and English, then update `README`, `README.eng`, and `HISTORY` as summaries/pointers.
+- [x] Document the self-host build procedure in `docs/` in Russian and English, then update `README`, `README.eng`, and `HISTORY` as summaries/pointers.
 
 ## Stage 3: Conditional Compilation
 
