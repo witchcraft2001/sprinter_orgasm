@@ -79,6 +79,11 @@ SS4		ex af,af' ;'
 		jp z,SkipStr
 		cp ";"		;комментарий
 		jp z,SkipStr
+		ld c,a
+		ld a,(CondActive)
+		or a
+		ld a,c
+		jp z,CondSkipPart
 		jr SS4
 ;		 jp SkipStr
 
@@ -114,16 +119,16 @@ SS8		call GetVar2
 		call z,SkipSpace
 SS9		pop de
 		pop de
-		jr SS3 ; конец добавления в v0.2X
+		jp SS3 ; конец добавления в v0.2X
 SS6		pop af
 		pop hl
-		jr SS3
+		jp SS3
 
 ;Разбор строки внутри неактивного блока IF/ELSE/ENDIF.
 ;Обычные строки пропускаются без синтаксического анализа.
 CondSkipLine	ld a,(hl)
 		inc hl
-		cp #09
+CondSkipPart	cp #09
 		jr z,CondSkipLine
 		cp #20
 		jr z,CondSkipLine
@@ -132,8 +137,10 @@ CondSkipLine	ld a,(hl)
 		cp ";"
 		jp z,SkipStr
 		call Letter
-		jp nc,SkipStr
-		ld de,CmndBuf
+		jr c,CSL0
+		call CondSkipExpr
+		jp CondNextPart
+CSL0		ld de,CmndBuf
 		ld b,10
 CSL1		and #df
 		ld (de),a
@@ -151,9 +158,10 @@ CSL1		and #df
 		cp #0d
 		jr z,CSL2
 		call Letter
-		jp nc,SkipStr
+		jr nc,CSL_SKIP
 		djnz CSL1
-		jp SkipStr
+CSL_SKIP	call CondSkipExpr
+		jp CondNextPart
 CSL2		ld (CondDelim),a
 		xor a
 		ld (de),a
@@ -162,83 +170,97 @@ CSL2		ld (CondDelim),a
 		jr z,CSL_IF
 		cp "E"
 		jr z,CSL_E
-		jp SkipStr
+		jp CSL_OTHER
 CSL_IF		ld a,(CmndBuf+1)
 		cp "F"
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CmndBuf+2)
 		or a
 		jr z,CSL_IF0
 		cp "D"
 		jr z,CSL_IFDEF
 		cp "N"
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CmndBuf+3)
 		or a
 		jr z,CSL_IF0
 		cp "D"
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CmndBuf+4)
 		cp "E"
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CmndBuf+5)
 		cp "F"
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CmndBuf+6)
 		or a
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		jr CSL_IF0
 CSL_IFDEF	ld a,(CmndBuf+3)
 		cp "E"
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CmndBuf+4)
 		cp "F"
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CmndBuf+5)
 		or a
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 CSL_IF0	call CondPushInactive
-		jp SkipStr
+		ld a,(CondDelim)
+		call CondSkipExpr
+		jr CondNextPart
 CSL_E		ld a,(CmndBuf+1)
 		cp "L"
 		jr z,CSL_ELSE
 		cp "N"
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CmndBuf+2)
 		cp "D"
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CmndBuf+3)
 		cp "I"
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CmndBuf+4)
 		cp "F"
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CmndBuf+5)
 		or a
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CondDelim)
 		call _endif
-		jp SkipStr
+		jr CondNextPart
 CSL_ELSE	ld a,(CmndBuf+2)
 		cp "S"
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CmndBuf+3)
 		cp "E"
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CmndBuf+4)
 		or a
 		jr z,CSL_ELSE0
 		cp "I"
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CmndBuf+5)
 		cp "F"
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CmndBuf+6)
 		or a
-		jp nz,SkipStr
+		jp nz,CSL_OTHER
 		ld a,(CondDelim)
 		call _elseif
-		jp SkipStr
+		jr CondNextPart
 CSL_ELSE0	ld a,(CondDelim)
 		call _else
-		jp SkipStr
+		jr CondNextPart
+CSL_OTHER	ld a,(CondDelim)
+		call CondSkipExpr
+CondNextPart	cp ":"
+		jp nz,SkipStr
+		ld a,(hl)
+		inc hl
+		ld c,a
+		ld a,(CondActive)
+		or a
+		ld a,c
+		jp z,CondSkipPart
+		jp SS3

@@ -47,9 +47,9 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 - [x] Support `IF expr`, `IFN expr`, `IFDEF name`, and `IFNDEF name`.
 - [x] Support `ELSEIF expr`, `ELSE`, and `ENDIF`.
 - [x] Ensure inactive branches are skipped without parsing labels, mnemonics, or invalid code.
-- [ ] Support colon-separated conditional directives, for example:
+- [x] Support colon-separated conditional directives, for example:
   - `IFNDEF NEW_VERSION : DEFINE NEW_VERSION 1 : ENDIF`
-- [ ] Add examples/tests for nested conditions beyond line-oriented inactive branch skipping.
+- [x] Add examples/tests for nested conditions beyond line-oriented inactive branch skipping.
 - [x] Add an ASM example that verifies the implemented conditional compilation directives.
 - [x] Document conditional compilation syntax and examples in `docs/` in Russian and English.
 

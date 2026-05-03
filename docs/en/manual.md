@@ -218,9 +218,12 @@ Broken:         db ?
                 elseif BUILD
 Value:          byte #24
                 endif
+
+                ifndef NEWFLAG : define NEWFLAG 7 : endif
+                ifdef NEWFLAG : byte NEWFLAG : endif
 ```
 
-`DEFINE name value` adds a numeric name that can be used in expressions and `IFDEF` checks; `UNDEFINE name` removes a previously defined name. OrgAsm supports `IF expr`, `IFN expr`, `IFDEF name`, `IFNDEF name`, `ELSEIF expr`, `ELSE`, and `ENDIF`. Condition expressions must be resolvable at the directive location. Inactive branches are skipped to the end of the line without parsing labels, mnemonics, or invalid code. Conditional directives should start as regular line commands; single-line chains through `:` are not intended for nested conditional parsing yet.
+`DEFINE name value` adds a numeric name that can be used in expressions and `IFDEF` checks; `UNDEFINE name` removes a previously defined name. OrgAsm supports `IF expr`, `IFN expr`, `IFDEF name`, `IFNDEF name`, `ELSEIF expr`, `ELSE`, and `ENDIF`. Condition expressions must be resolvable at the directive location. Inactive branches are skipped to the end of the line without parsing labels, mnemonics, or invalid code. Conditional directives can be chained with other directives through `:`, for example `IFNDEF X : DEFINE X 1 : ENDIF`.
 
 ## Z80 Syntax Notes
 

@@ -64,8 +64,9 @@ ORG, PHASE, DEPHASE, EQU, DEFB (DB, BYTE), DEFW (DW, WORD),
 DEFS (DS, BLOCK), INCLUDE, INCBIN, SAVE, SAVEBIN.
 DEFINE, IF, IFN, IFDEF, IFNDEF, ELSEIF, ELSE, ENDIF.
 UNDEFINE.
+Conditional directives can be chained with ":".
 
-About OGR:
+About ORG:
 A program will be compiled from 8100h without ORG directive.
 
 About DEFS (DS):

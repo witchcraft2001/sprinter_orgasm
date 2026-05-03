@@ -31,5 +31,21 @@ Other:  byte #00
         byte #11
         endif
 
+        ifndef ONEDEF : define ONEDEF 1 : endif
+        ifdef ONEDEF : byte #22 : endif
+
+        if 0
+        if 1
+Nested bad source line
+        endif
+        else
+        byte #33
+        endif
+
+        ifdef ONEDEF : byte #44 : endif
+
+        ifndef NEWFLAG : define NEWFLAG 7 : endif
+        ifdef NEWFLAG : byte NEWFLAG : endif
+
 End:
         savebin "COND.BIN",#6000,End-#6000

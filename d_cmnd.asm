@@ -38,7 +38,7 @@ DFN2		push hl
 		pop hl
 		ld a,(Pass)
 		or a
-		call z,NL6
+		call z,CondNewLabel
 		ld a,(CondDelim)
 		ld b,0
 		ret
@@ -243,6 +243,24 @@ CondStackErr	pop de
 		pop hl
 		ld b,SyntaxEr
 		jp SkipStrC
+CondNewLabel	exx
+		push bc
+		push de
+		push hl
+		exx
+		ex af,af' ;'
+		push af
+		ex af,af' ;'
+		call NL6
+		ex af,af' ;'
+		pop af
+		ex af,af' ;'
+		exx
+		pop hl
+		pop de
+		pop bc
+		exx
+		ret
 DeleteLabel	push hl
 		in a,(Page2)
 		ld (CondPage2),a
