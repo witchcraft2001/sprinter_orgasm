@@ -10,7 +10,8 @@ INCB = DIRB\B.ASM
 all: $(OUT)
 
 $(OUT): $(SRC) $(ROOT) $(INCA) $(INCB)
-	$(ASM) $(SRC) $(OUT) /E
+	$(ASM) $(SRC) $(OUT) /E /L=MIXED.ERR
 
 clean:
 	-DEL $(OUT)
+	-DEL MIXED.ERR

@@ -1,14 +1,14 @@
 ASM = ..\..\ORGASM.EXE
-SRC = LOCAL.ASM
-OUT = LOCAL.EXE
+SRC = ERRORS.ASM
+OUT = ERRORS.EXE
 
 .PHONY: all clean
 
 all: $(OUT)
 
 $(OUT): $(SRC)
-	$(ASM) $(SRC) $(OUT) /E /L=LOCAL.ERR
+	$(ASM) $(SRC) $(OUT) /E /L=ERRORS.ERR
 
 clean:
 	-DEL $(OUT)
-	-DEL LOCAL.ERR
+	-DEL ERRORS.ERR

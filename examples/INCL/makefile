@@ -8,7 +8,8 @@ INC = INC\TEXT.ASM
 all: $(OUT)
 
 $(OUT): $(SRC) $(INC)
-	$(ASM) $(SRC) $(OUT) /E
+	$(ASM) $(SRC) $(OUT) /E /L=INCL.ERR
 
 clean:
 	-DEL $(OUT)
+	-DEL INCL.ERR

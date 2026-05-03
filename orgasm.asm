@@ -173,9 +173,11 @@ ComStr10        ld c,#ff
                 cp "C"
                 jr z,ComStr12
                 cp "S" ; добавлено в v0.2X
-                jr z,ComStr14
+                jp z,ComStr14
                 cp "M" ; добавлено в v0.2X
                 jr z,ComStr15
+                cp "L"
+                jr z,ComStr16
                 cp "E"
                 ret nz
                 ld a,c
@@ -203,6 +205,61 @@ ComStr15        ld a,c ; новое в v0.2X
                 ld (SymFlag),a
                 jr ComStr13
 
+ComStr16        ld a,c
+                ld (ErrFile),a
+                ld a,(hl)
+                or a
+                jr z,ComStr13
+                cp #20
+                jr z,ComStr13
+                cp ':'
+                jr z,ComStr17
+                cp '='
+                jr nz,ComStr18
+ComStr17        inc hl
+                ld a,(hl)
+                or a
+                jr z,ComStr13
+                cp #20
+                jr z,ComStr13
+ComStr18        ld de,ErrNameBuf
+                xor a
+                ld (ErrNameExt),a
+ComStr19        ld a,(hl)
+                or a
+                jr z,ComStr21
+                cp #20
+                jr z,ComStr21
+                cp '.'
+                jr nz,ComStr20
+                push af
+                ld a,c
+                ld (ErrNameExt),a
+                pop af
+ComStr20        ld (de),a
+                inc de
+                inc hl
+                jr ComStr19
+ComStr21        ld a,(ErrNameExt)
+                or a
+                jr nz,ComStr22
+                ld a,'.'
+                ld (de),a
+                inc de
+                ld a,'e'
+                ld (de),a
+                inc de
+                ld a,'r'
+                ld (de),a
+                inc de
+                ld (de),a
+                inc de
+ComStr22        xor a
+                ld (de),a
+                dec a
+                ld (ErrNameFlag),a
+                jr ComStr13
+
 ComStr14        push bc ; новое в v0.2X
                 push hl
                 ld c,Clear
@@ -216,7 +273,7 @@ ComStr14        push bc ; новое в v0.2X
                 rst #10
                 pop hl
                 pop bc
-                jr ComStr13
+                jp ComStr13
 
 ComStr4         ld hl,(OutFAdr)
                 call CurSpec    ;создаем имя выходного файла
@@ -339,6 +396,10 @@ ComStr9         ld hl,(RepFAdr) ;создаем имя файла-репорта
                 ld hl,Loading
                 ld c,PChars
                 rst #10         ;печать сообщения о загрузке
+                ld hl,ComBuffer
+                ld (FileNameAdr),hl
+                ld a,#ff
+                ld (FileNamePage),a
                 ld hl,ComBuffer
                 call LoadFile   ;загрузка исходника в память
 ;
@@ -665,6 +726,240 @@ TC4             ld hl,PrTimeComp
 
                 jp ExitDSS
 
+OpenErrLog      ld a,(ErrFile)
+                or a
+                ret z
+                ld a,(ErrOpenFile)
+                or a
+                ret nz
+                ld a,(ErrNameFlag)
+                or a
+                jr z,OpenErrLog1
+                ld hl,ErrNameBuf
+                jr OpenErrLog2
+OpenErrLog1     ld hl,(SomeAdr)
+                ld a,'e'
+                ld (hl),a
+                inc hl
+                ld a,'r'
+                ld (hl),a
+                inc hl
+                ld (hl),a
+                ld hl,(RepFAdr)
+OpenErrLog2     ld a,00100000b
+                ld c,Create
+                rst #10
+                ret c
+                ld (ErrOpenFile),a
+                ret
+
+CloseErrLog     ld a,(ErrOpenFile)
+                or a
+                ret z
+                ld c,Close
+                rst #10
+                xor a
+                ld (ErrOpenFile),a
+                ret
+
+WriteErrLog     ld a,(ErrOpenFile)
+                or a
+                jr nz,WriteErrLog1
+                ld a,(ErrFile)
+                or a
+                ret z
+WriteErrLog1
+                push af
+                push bc
+                push de
+                push hl
+                call OpenErrLog
+                ld a,(ErrOpenFile)
+                or a
+                jr z,WriteErrLog2
+                call ErrWriteLocation
+                ld hl,(ErrMsgPtr)
+                call ErrWriteZ
+                ld hl,ErrCRLF
+                call ErrWriteZ
+                ld hl,(BegString)
+                call ErrWriteLine
+                ld hl,ErrCRLF
+                call ErrWriteZ
+WriteErrLog2
+                pop hl
+                pop de
+                pop bc
+                pop af
+                ret
+
+ErrWriteLocation
+                ld hl,(NumString)
+                ld de,ErrLineBuf
+                call Hex2Dec
+                call ErrGetFileName
+                call ErrWriteZ
+                ld hl,ErrColon
+                call ErrWriteZ
+                call ErrLineStart
+                call ErrWriteZ
+                ld hl,ErrColonSpace
+                call ErrWriteZ
+                ret
+
+PrintErrLocation
+                push af
+                push bc
+                push de
+                push hl
+                ld hl,(NumString)
+                ld de,ErrLineBuf
+                call Hex2Dec
+                call ErrGetFileName
+                call ErrPrintZ
+                ld a,':'
+                ld c,PutChar
+                rst #10
+                call ErrLineStart
+                call ErrPrintZ
+                ld a,':'
+                ld c,PutChar
+                rst #10
+                ld hl,CRLF
+                ld c,PChars
+                rst #10
+                pop hl
+                pop de
+                pop bc
+                pop af
+                ret
+
+ErrGetFileName  ld a,(CurrentFile)
+                call GoSpec
+                ld de,#0009
+                add hl,de
+                ld a,(hl)
+                inc hl
+                ld e,(hl)
+                inc hl
+                ld d,(hl)
+                cp #ff
+                jr z,ErrGetFileName1
+                push de
+                call SetBankAsm
+                pop hl
+                ld de,DataBuf
+                call ErrCopySpecName
+                ld a,(TextPage)
+                call SetBankAsm
+                ld hl,DataBuf
+                ret
+ErrGetFileName1 ex de,hl
+                ret
+
+ErrCopySpecName
+                ld a,(hl)
+                inc hl
+                cp #09
+                jr z,ErrCopySpecName
+                cp #20
+                jr z,ErrCopySpecName
+                cp '"'
+                jr z,ErrCopyQuoted
+                cp "'"
+                jr z,ErrCopyQuoted
+ErrCopyPlain    or a
+                jr z,ErrCopyDone
+                cp #09
+                jr z,ErrCopyDone
+                cp #20
+                jr z,ErrCopyDone
+                cp #0d
+                jr z,ErrCopyDone
+                cp #0a
+                jr z,ErrCopyDone
+                cp ','
+                jr z,ErrCopyDone
+                cp ';'
+                jr z,ErrCopyDone
+                ld (de),a
+                inc de
+                ld a,(hl)
+                inc hl
+                jr ErrCopyPlain
+ErrCopyQuoted   ld c,a
+ErrCopyQuoted1  ld a,(hl)
+                inc hl
+                or a
+                jr z,ErrCopyDone
+                cp c
+                jr z,ErrCopyDone
+                cp #0d
+                jr z,ErrCopyDone
+                cp #0a
+                jr z,ErrCopyDone
+                ld (de),a
+                inc de
+                jr ErrCopyQuoted1
+ErrCopyDone     xor a
+                ld (de),a
+                ret
+
+ErrLineStart    ld hl,ErrLineBuf
+ErrLineStart1   ld a,(hl)
+                cp #20
+                ret nz
+                inc hl
+                jr ErrLineStart1
+
+ErrPrintZ       ld a,(hl)
+                or a
+                ret z
+                inc hl
+                push hl
+                ld c,PutChar
+                rst #10
+                pop hl
+                jr ErrPrintZ
+
+ErrWriteZ       push hl
+                ld de,0
+ErrWriteZ1      ld a,(hl)
+                or a
+                jr z,ErrWriteZ2
+                inc hl
+                inc de
+                jr ErrWriteZ1
+ErrWriteZ2      pop hl
+                ld a,d
+                or e
+                ret z
+                ld a,(ErrOpenFile)
+                ld c,Write
+                rst #10
+                ret
+
+ErrWriteLine    push hl
+                ld de,0
+ErrWriteLine1   ld a,(hl)
+                or a
+                jr z,ErrWriteLine2
+                cp #0d
+                jr z,ErrWriteLine2
+                cp #0a
+                jr z,ErrWriteLine2
+                inc hl
+                inc de
+                jr ErrWriteLine1
+ErrWriteLine2   pop hl
+                ld a,d
+                or e
+                ret z
+                ld a,(ErrOpenFile)
+                ld c,Write
+                rst #10
+                ret
+
 CreateSub ;в v0.2X это теперь подпрограмма
                 ld a,00100000b  ;атрибут файла
                 ld c,Create
@@ -890,12 +1185,12 @@ SetBankAsm1     ld b,a
 ;
 GoSpec          ld h,0
                 ld l,a
-                push hl
                 add hl,hl       ;*2
                 add hl,hl       ;*4
+                ld d,h
+                ld e,l
                 add hl,hl       ;*8
-                pop de
-                add hl,de       ;*9
+                add hl,de       ;*12
                 ld de,TblLoadFile
                 add hl,de       ;начало описателя файла в таблице
                 ret
@@ -973,6 +1268,14 @@ LF1             ld (NumOpenFile),a
                 add hl,de
                 ld a,(CurrentFile)
                 ld (hl),a       ;файл-родитель
+                inc hl
+                ld a,(FileNamePage)
+                ld (hl),a       ;банк строки с именем файла или #ff
+                inc hl
+                ld de,(FileNameAdr)
+                ld (hl),e       ;адрес строки с именем файла
+                inc hl
+                ld (hl),d
                 pop af
                 ld (CurrentFile),a
 
@@ -1269,6 +1572,7 @@ ExitDSS
 ;                ld a,(PageW2)
 ;                out (#c2),a
 ;                ld sp,#bfff
+                call CloseErrLog
                 ld a,(OpenFile) ;проверка, есть ли не закрытый файл
                 or a
                 jr z,EDSS1
@@ -1389,6 +1693,7 @@ Hello           db 13,10
 Help            db 'OrgAsm [drv:\path\]inFile[.ext] [drv:\path\outFile.ext] [/options]',13,10,10
                 db '/E - create EXE-prefix  ',13,10
                 db '/C - upper Case significant in symbols',13,10
+                db '/L[:file] - create Error log on errors',13,10
                 db '/M - create Symbol table   ',13,10
                 db '/S - clear Screen',13,10,0
 PassText        db "Pass 1",13,10,0
@@ -1401,6 +1706,10 @@ Continue        db 13,10,"Return to file: ",0
 Asembling       db "Current line: 00000",13,0
 ;PrPCAddres      db "(00000)",13,0
 Errors          db "Errors: 00000",32,32,32,"No code generated...",13,10,0
+ErrLineBuf      db "00000",0
+ErrColon        db ":",0
+ErrColonSpace   db ": ",0
+ErrCRLF         db 13,10,0
 PrPause         db "Pause...  <Esc> to Exit or <AnyKey> to Continue",0
 PrTimeComp      db 13,10,"Compile time - 00:00",13,10,10,0
 CRLF            db 10,13,0
@@ -1460,6 +1769,14 @@ RepFile         db 0            ;#ff - создавать файл репорт
                                 ;#00 - не создавать
 SymFlag         db 0            ;#ff - создавать таблицу символов (новое в v0.28)
                                 ;#00 - не создавать
+ErrFile         db 0            ;#ff - создавать файл ошибок
+ErrOpenFile     db 0            ;манипулятор файла ошибок
+ErrNameFlag     db 0            ;#ff - имя файла ошибок задано явно
+ErrNameExt      db 0            ;#ff - в имени файла ошибок есть расширение
+ErrMsgPtr       dw 0            ;адрес текста последней ошибки
+ErrNameBuf      ds 128          ;явное имя файла ошибок
+FileNamePage    db 0            ;банк строки с именем загружаемого файла
+FileNameAdr     dw 0            ;адрес строки с именем загружаемого файла
 PhaseFlag       db 0            ;#00 - не было PHASE
                                 ;#ff - установлен PHASE
 New1            dw #8100        ; появилось в v0.2X
@@ -1485,6 +1802,8 @@ TblLoadFile     equ #7C00 ;v0.2X;таблица загруженных файл�
                 ;+4 - адрес строки с именем подключаемого файла (2)
                 ;+6 - номер include-строки (2)
                 ;+8 - номер файла возврата (1)
+                ;+9 - банк строки с именем файла или #ff для основного файла (1)
+                ;+10 - адрес строки с именем файла (2)
 TabLabel        equ #8000       ;начало таблицы меток
 ;FileID          equ $           ;id открытого файла (1)
 ;MemID           equ FileID+1    ;адрес таблицы выделенной памяти (2)

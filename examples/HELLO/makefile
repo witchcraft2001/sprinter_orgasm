@@ -7,7 +7,8 @@ OUT = HELLO.EXE
 all: $(OUT)
 
 $(OUT): $(SRC)
-	$(ASM) $(SRC) $(OUT) /E
+	$(ASM) $(SRC) $(OUT) /E /L=HELLO.ERR
 
 clean:
 	-DEL $(OUT)
+	-DEL HELLO.ERR

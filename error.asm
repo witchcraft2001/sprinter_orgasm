@@ -55,6 +55,7 @@ ErAsm1		dec a
 		inc hl
 		ld h,(hl)
 		ld l,a
+		ld (ErrMsgPtr),hl
 		push hl
 
 		ld c,Cursor
@@ -68,6 +69,8 @@ ErAsm1		dec a
 		ld hl,CRLF
 		ld c,PChars
 		rst #10		;перевод строки
+		call PrintErrLocation
+		call WriteErrLog
 
 		ld c,Cursor
 		rst #10		;координаты курсора
@@ -202,4 +205,3 @@ er0E		db "Division by zero",0
 er8F		db "Overflowing of labels table",0
 er90		db "Overflowing of operations stack",0
 er91		db "General failure",0
-

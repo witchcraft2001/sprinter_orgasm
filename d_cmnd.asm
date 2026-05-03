@@ -260,6 +260,8 @@ _include	push hl
 		inc hl
 		pop de
 		ld a,(TextPage) ;текущий лог.N банки с текстом
+		ld (FileNamePage),a
+		ld (FileNameAdr),de
 		ld (hl),a
 		inc hl
 		ld (hl),e	;запоминаем начало имени файла в исходнике
