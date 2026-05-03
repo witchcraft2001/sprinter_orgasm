@@ -24,7 +24,7 @@ Start           equ #4200
                 db #01          ;EXE VERSION
                 dw #0200        ;CODE OFFSET LOW
                 dw #0000        ;CODE OFFSET HIGH
-                dw #0000        ;END-BEG ;PRIMARY LOADER
+                dw #0000        ;PRIMARY LOADER
                 dw #0000        ;
                 dw #0000        ;RESERVED
                 dw #0000        ;
@@ -37,6 +37,7 @@ Start           equ #4200
 ;Функции DSS Estex
 ;
 CurDisk         equ #02
+ChDisk          equ #01
 Create          equ #0a
 Open            equ #11
 Close           equ #12
@@ -44,6 +45,7 @@ Read_           equ #13
 Write           equ #14
 Move_FP         equ #15
 CurDir          equ #1e
+ChDir           equ #1d
 SysTime         equ #21
 WaitKey         equ #30
 ScanKey         equ #31
@@ -669,7 +671,15 @@ CreateSub ;в v0.2X это теперь подпрограмма
                 rst #10         ;создание выходного файла
                 jp c,Error      ;открываем файл для записи
                 ld (OpenFile),a ;файловый манипулятор
+                ld bc,(OutFileID)
+                ld (SaveOutID),bc
+                ld hl,(PCAddres)
+                ld bc,(New1)
+                or a
+                sbc hl,bc
+                ld (SaveOutLen),hl
                 ld a,(GlBufer)  ;добавлено в v0.2X
+                ld (SaveExeFlag),a
                 or a
                 jr z,SOF1A
                 ld hl,DataBuf
@@ -718,7 +728,7 @@ CreateSub ;в v0.2X это теперь подпрограмма
                 rst #10         ;запись блока в память
                 jp c,Error
 
-SOF1A           ld bc,(OutFileID)
+SOF1A           ld bc,(SaveOutID)
                 ld a,c          ;ID блока памяти с выходным кодом
                 ld c,b          ;кол-во записываемых банок
                 ld b,0
@@ -749,10 +759,17 @@ SOF1            push af
 
 SOF100          pop bc
                 pop af
+                ld a,(SaveExeFlag) ;для /E длина тела = текущий PC - адрес загрузки
+                or a
+                jr z,SOF102
+                ld hl,(SaveOutLen)
+                jr SOF101
+SOF102
                 or a
                 ld bc,#8000
                 ld hl,(SaveObjAdr)
                 sbc hl,bc       ;вычисление объема хвоста файла
+SOF101
                 ex de,hl
                 ld hl,#c000     ;начало кода
                 ld a,(OpenFile) ;файловый манипулятор
@@ -806,6 +823,28 @@ CurSpec1        ld hl,ComBuffer
                 cpir
                 ld a,#10
                 jp nz,Error
+                ret
+;
+;Сохранение и восстановление текущего каталога вокруг INCLUDE
+;
+SaveCurPath     ld c,CurDisk
+                rst #10
+                jp c,Error
+                ld (SaveCurDisk),a
+                ld hl,SaveCurDir
+                ld c,CurDir
+                rst #10
+                jp c,Error
+                ret
+
+RestoreCurPath  ld a,(SaveCurDisk)
+                ld c,ChDisk
+                rst #10
+                jp c,Error
+                ld hl,SaveCurDir
+                ld c,ChDir
+                rst #10
+                jp c,Error
                 ret
 
 SetBankMap      ld de,(MapLabelID)
@@ -952,6 +991,28 @@ LF4             push bc
                 ld c,Read_
                 rst #10         ;читаем файл в память
                 jp c,Error
+
+                ;конвертация LF в CR для исходников с unix line endings
+                ex (sp),hl      ;HL=начало прочитанного блока
+                push hl
+                push de
+                push af
+                ld b,d
+                ld c,e
+LFconv1         ld a,b
+                or c
+                jr z,LFconv2
+                ld a,(hl)
+                cp #0a
+                jr nz,LFconv3
+                ld (hl),#0d
+LFconv3         inc hl
+                dec bc
+                jr LFconv1
+LFconv2         pop af
+                pop de
+                pop hl
+                ex (sp),hl
 
                 or a            ;прочитаны все байты?
                 jr nz,LF3
@@ -1392,6 +1453,11 @@ New3            dw #bfff        ; появилось в v0.2X
 EndLabel        db #00          ;старший байт конца таблицы меток
 
 SaveObjAdr      dw #8000        ;адрес записи байта obj-кода в память
+SaveOutID       dw 0            ;сохраненный ID/размер выходного кода
+SaveOutLen      dw 0            ;сохраненная длина EXE-кода
+SaveExeFlag     db 0            ;сохраненный признак генерации EXE-префикса
+SaveCurDisk     db 0            ;диск перед загрузкой INCLUDE
+SaveCurDir      ds 128          ;каталог перед загрузкой INCLUDE
 NumOpenFile     db #00          ;порядковый номер открываемого файла
 CurrentFile     db #ff          ;номер текущего ассемблируемого файла
 AdrOpenFile     dw #bfff        ;адрес начала загрузки очередного файла -1

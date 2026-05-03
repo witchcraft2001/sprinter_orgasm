@@ -277,8 +277,10 @@ _include	push hl
 		ld c,PChars
 		call DSS
 
+		call SaveCurPath
 		ld hl,DataBuf
 		call LoadFile
+		call RestoreCurPath
 
 		ld b,#00
 		ld a,#0d
