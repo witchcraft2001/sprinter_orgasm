@@ -175,6 +175,31 @@ EDUP2		pop hl
 		ld a,(CondDelim)
 		ld b,0
 		ret
+;DISPLAY "text"
+_display	ld de,DataBuf
+		call OutputSpec
+		ld (CondDelim),a
+		ld a,(Pass)
+		inc a
+		jr nz,DSP1
+		push hl
+		ex de,hl
+		ld b,19
+DSP2		ld (hl),#20
+		inc hl
+		djnz DSP2
+		ld (hl),#0a
+		inc hl
+		ld (hl),#0d
+		inc hl
+		ld (hl),0
+		ld hl,DataBuf
+		ld c,PChars
+		call DSS
+		pop hl
+DSP1		ld a,(CondDelim)
+		ld b,0
+		ret
 DupEndLine	cp #20
 		call z,SkipSpace
 		cp #09

@@ -238,6 +238,14 @@ Start:          byte #3e,#2a
 
 One build can use up to 8 deferred output files through `SAVE`, `SAVEBIN`, and `OUTPUT`; the output file name in the directive is limited to 63 characters.
 
+### DISPLAY
+
+```asm
+                display "Building DIAG example"
+```
+
+Prints a message during assembly. The message is printed on the second pass, so it is not duplicated. The string must be quoted with single or double quotes.
+
 ### Conditional Compilation
 
 ```asm
@@ -286,6 +294,7 @@ Examples are stored in `examples/`:
 - `MIXED` - several include files from different directories;
 - `SAVE` - `SAVE`/`SAVEBIN`, `/N`, `BYTE`, `WORD`, `BLOCK`;
 - `COND` - conditional compilation and inactive branch skipping;
+- `DIAG` - diagnostic `DISPLAY` output;
 - `TASM` - TASM-compatible `DISP`/`ENT`, `DD`/`DEFD`/`DWORD`, `DUP`/`EDUP`, `OUTPUT`/`OUTEND`, and grouped binary numbers;
 - `ERRORS` - intentionally invalid example for checking `/L`.
 

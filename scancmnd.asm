@@ -386,6 +386,8 @@ TabCmnd		db 7,"ADC",#80
 		db #f3,#00
 		db 8,"DISP",#81
 		dw _phase
+		db 11,"DISPLAY",#81
+		dw _display
 		db 8,"DJNZ",#80
 		dw _djnz
 		db 6,"DS",#81

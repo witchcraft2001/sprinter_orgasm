@@ -103,7 +103,8 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 ## Stage 7: Extended sjasmplus Subset
 
 - [x] Evaluate `OUTPUT`/`OUTEND` support or map it to the new output-range mechanism.
-- [ ] Add useful diagnostics directives if needed: `DISPLAY`, `ASSERT`, `ERROR`, and `WARNING`.
+- [x] Add `DISPLAY "text"` as a useful assembly-time diagnostic directive.
+- [ ] Add remaining useful diagnostics directives if needed: `ASSERT`, `ERROR`, and `WARNING`.
 - [ ] Decide whether `ALIGN` is needed separately from `BLOCK`.
 - [ ] Define a deliberate boundary for unsupported sjasmplus features, especially `LUA`, `ENDLUA`, and `INCLUDELUA`.
 - [ ] Consider macro support only after the previous stages are stable.

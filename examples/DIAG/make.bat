@@ -1,0 +1,1 @@
+..\..\ORGASM.EXE MAIN.ASM /N /L=DIAG.ERR
