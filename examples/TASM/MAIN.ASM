@@ -1,4 +1,5 @@
         org #6200
+        output "TOUT.BIN"
 
 Start:  byte #01
 
@@ -15,5 +16,5 @@ Virt:   byte #02
         byte #11
         edup
 
-End:
+End:    outend
         savebin "TASM.BIN",#6200,End-#6200

@@ -27,17 +27,19 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 - [x] Add `SAVE` and `SAVEBIN` directives compatible with the common sjasmplus form:
   - `SAVEBIN "file.bin", start, size`
   - `SAVE "file.bin", start, size`
+- [x] Add `OUTPUT "file.bin"` / `OUTEND` as a deferred range output form.
 - [x] Defer `SAVE`/`SAVEBIN` writes until assembly succeeds, so failed builds do not leave partial output files.
+- [x] Clamp directive output ranges to generated object code, so oversized lengths do not save stale memory or directory data.
 - [x] Add a source-driven output mode that disables the implicit command-line output file and writes only files requested by `SAVE`/`SAVEBIN`.
 - [x] Add a command-line switch for source-driven output mode, for example `/N`, and document that `/E` remains only for the legacy implicit EXE output path.
 - [x] Add data directive aliases used by sjasmplus/TASM-style sources:
   - `BYTE` as `DB`
   - `WORD` as `DW`
   - `BLOCK size[,fill]` as `DS size[,fill]`
-- [x] Add an ASM example that verifies `SAVE`/`SAVEBIN`, source-driven output, and the new data directive aliases.
+- [x] Add ASM examples that verify `SAVE`/`SAVEBIN`, `OUTPUT`/`OUTEND`, source-driven output, and the new data directive aliases.
 - [x] Update `orgasm.asm` or add a small compatibility include so OrgAsm can emit executable images explicitly.
 - [ ] Verify OrgAsm-on-OrgAsm assembly: build OrgAsm with sjasmplus, then assemble the same source with OrgAsm and compare binaries.
-- [x] Document `SAVE`/`SAVEBIN`, `/N`, and data aliases in `docs/` in Russian and English, then update `README`, `README.eng`, and `HISTORY` as summaries/pointers.
+- [x] Document `SAVE`/`SAVEBIN`, `OUTPUT`/`OUTEND`, `/N`, and data aliases in `docs/` in Russian and English, then update `README`, `README.eng`, and `HISTORY` as summaries/pointers.
 
 ## Stage 3: Conditional Compilation
 
@@ -60,7 +62,7 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 - [x] Add `DUP` and `EDUP` block repetition.
 - [x] Add `DEFD`/`DD`/`DWORD` for little-endian 32-bit data.
 - [x] Add numeric compatibility where needed, including grouped binary literals such as `%0100'0000`.
-- [ ] Review `/Users/dmitry/dev/zx/sprinter/sources/tasm_071/TASM` after each feature and add focused regression examples. `DISP`/`ENT`, `DD`/`DEFD`/`DWORD`, `DUP`/`EDUP`, and grouped binary literals are covered by `examples/TASM`.
+- [ ] Review `/Users/dmitry/dev/zx/sprinter/sources/tasm_071/TASM` after each feature and add focused regression examples. `DISP`/`ENT`, `DD`/`DEFD`/`DWORD`, `DUP`/`EDUP`, `OUTPUT`/`OUTEND`, and grouped binary literals are covered by `examples/TASM`.
 - [ ] Add ASM examples that verify every new TASM compatibility directive or syntax form.
 - [ ] Document every newly supported compatibility directive and numeric format in `docs/` in Russian and English.
 
@@ -100,7 +102,7 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 
 ## Stage 7: Extended sjasmplus Subset
 
-- [ ] Evaluate `OUTPUT`/`OUTEND` support or map it to the new output-range mechanism.
+- [x] Evaluate `OUTPUT`/`OUTEND` support or map it to the new output-range mechanism.
 - [ ] Add useful diagnostics directives if needed: `DISPLAY`, `ASSERT`, `ERROR`, and `WARNING`.
 - [ ] Decide whether `ALIGN` is needed separately from `BLOCK`.
 - [ ] Define a deliberate boundary for unsupported sjasmplus features, especially `LUA`, `ENDLUA`, and `INCLUDELUA`.

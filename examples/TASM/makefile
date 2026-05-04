@@ -11,4 +11,5 @@ $(OUT): $(SRC)
 
 clean:
 	-DEL $(OUT)
+	-DEL TOUT.BIN
 	-DEL TASM.ERR

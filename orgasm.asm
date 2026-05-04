@@ -427,6 +427,7 @@ AsmF2           ld hl,CRLF
                 ld (DupActive),a
                 ld (DupPendingFlag),a
                 ld (DupJumpFlag),a
+                ld (OutputActive),a
                 dec a
                 ld (CondActive),a
                 ld hl,#8100
@@ -611,6 +612,11 @@ AsmF4           ld a,(PhaseFlag);вначале проверяем все фла
                 or a
                 call nz,ErrorAsm;вывод сообщения об ошибке
                 ld a,(DupActive)
+                ld hl,(BegString)
+                ld b,SyntaxEr
+                or a
+                call nz,ErrorAsm;вывод сообщения об ошибке
+                ld a,(OutputActive)
                 ld hl,(BegString)
                 ld b,SyntaxEr
                 or a
@@ -1170,10 +1176,7 @@ SDF0            ld hl,(SaveReqCur)
                 ld (SaveReqCur),hl
                 jr SDF0
 
-SaveRangeFile  push hl
-                ld c,Delete
-                rst #10
-                pop hl
+SaveRangeFile  call ClampSaveLen
                 ld a,00100000b
                 ld c,Create
                 rst #10
@@ -1243,6 +1246,39 @@ SRF4            ld a,(OpenFile)
                 jp c,Error
                 xor a
                 ld (OpenFile),a
+                ret
+
+ClampSaveLen   push hl
+                ld hl,(SaveObjAdr)
+                ld de,#8000
+                or a
+                sbc hl,de
+                ld a,(OutFileID+1)
+                dec a
+                jr z,SVCL2
+SVCL1           ld de,#4000
+                add hl,de
+                dec a
+                jr nz,SVCL1
+SVCL2           push hl
+                ld hl,(SaveStartTmp)
+                ld de,(New1)
+                or a
+                sbc hl,de
+                ex de,hl
+                pop hl
+                or a
+                sbc hl,de
+                jr nc,SVCL3
+                ld hl,0
+SVCL3           ld de,(SaveLenTmp)
+                push hl
+                or a
+                sbc hl,de
+                pop hl
+                jr nc,SVCL4
+                ld (SaveLenTmp),hl
+SVCL4           pop hl
                 ret
 ;
 ;Создание строки: текущий диск, текущий путь, имя основного файла
@@ -1979,6 +2015,10 @@ DupStartPage    db 0            ;страница первой строки DUP-
 DupJumpAdr      dw 0            ;адрес перехода к началу блока
 DupJumpLine     dw 0            ;номер строки для перехода
 DupJumpPage     db 0            ;страница перехода
+OutputActive    db 0            ;#ff - открыт диапазон OUTPUT
+OutputStart     dw 0            ;начальный адрес диапазона OUTPUT
+OutputReqPtr    dw 0            ;адрес записи OUTPUT в таблице SAVE
+OutputReqLenPtr dw 0            ;адрес длины в записи SAVE для OUTEND
 NumOpenFile     db #00          ;порядковый номер открываемого файла
 CurrentFile     db #ff          ;номер текущего ассемблируемого файла
 AdrOpenFile     dw #bfff        ;адрес начала загрузки очередного файла -1
@@ -2029,9 +2069,9 @@ CmndBuf         equ TimeComp+3  ;буфер команды или мнемони
 WordBuf         equ CmndBuf+10  ;буфер калькулятора, буфер под мету и др.(255)
 SomeBuf         equ WordBuf+255 ;добавлено для совместимости с v0.2X (255)
 DataBuf         equ SomeBuf+255 ;буфер под объектный код (255)
-StackOp         equ DataBuf+255 ;стек операций калькулятора (254)
-StackNum        equ StackOp+254 ;стек членов выражения (254)
-ComBuffer       equ StackNum+254;начало буфера параметров ком.строки
+StackOp         equ DataBuf+255 ;стек операций калькулятора (96)
+StackNum        equ StackOp+96  ;стек членов выражения (96)
+ComBuffer       equ StackNum+96 ;начало буфера параметров ком.строки
                 ;данные распологаются следующим образом:
                 ;диск, путь ,имя и расширение входного файла
                 ;#00 - признак окончания 1-го параметра

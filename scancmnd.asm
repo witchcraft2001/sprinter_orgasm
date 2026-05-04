@@ -476,8 +476,12 @@ TabCmnd		db 7,"ADC",#80
 		dw _out
 		db 8,"OUTD",2
 		db #ed,#ab
+		db 10,"OUTEND",#81
+		dw _outend
 		db 8,"OUTI",2
 		db #ed,#a3
+		db 10,"OUTPUT",#81
+		dw _output
 		db 9,"PHASE",#81
 		dw _phase
 		db 7,"POP",#80

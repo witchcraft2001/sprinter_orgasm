@@ -222,9 +222,21 @@ End:
                 save "COPY.BIN",#4000,End-#4000
 ```
 
-Saves a range of compiled code to a binary file after the second pass succeeds. Writes are deferred until the end of compilation, so failed builds do not create partial files. Use `/N` when the source should produce files only through explicit `SAVE`/`SAVEBIN` directives.
+Saves a range of compiled code to a binary file after the second pass succeeds. Writes are deferred until the end of compilation, so failed builds do not create partial files. If the requested length extends past the generated object code, only the available part of the range is saved. Use `/N` when the source should produce files only through explicit `SAVE`/`SAVEBIN` directives.
 
-One build can use up to 8 `SAVE`/`SAVEBIN` directives; the output file name in the directive is limited to 63 characters.
+### OUTPUT / OUTEND
+
+```asm
+                org #4000
+                output "RANGE.BIN"
+Start:          byte #3e,#2a
+                outend
+                savebin "COPY.BIN",#4000,$-#4000
+```
+
+`OUTPUT` starts a deferred output range at the current assembly address, and `OUTEND` closes it at the current address. The file name must be quoted. Nested `OUTPUT` ranges are not supported.
+
+One build can use up to 8 deferred output files through `SAVE`, `SAVEBIN`, and `OUTPUT`; the output file name in the directive is limited to 63 characters.
 
 ### Conditional Compilation
 
@@ -274,7 +286,7 @@ Examples are stored in `examples/`:
 - `MIXED` - several include files from different directories;
 - `SAVE` - `SAVE`/`SAVEBIN`, `/N`, `BYTE`, `WORD`, `BLOCK`;
 - `COND` - conditional compilation and inactive branch skipping;
-- `TASM` - TASM-compatible `DISP`/`ENT`, `DD`/`DEFD`/`DWORD`, `DUP`/`EDUP`, and grouped binary numbers;
+- `TASM` - TASM-compatible `DISP`/`ENT`, `DD`/`DEFD`/`DWORD`, `DUP`/`EDUP`, `OUTPUT`/`OUTEND`, and grouped binary numbers;
 - `ERRORS` - intentionally invalid example for checking `/L`.
 
 Each example directory contains a Sprinter make `makefile` and a `make.bat` file for users without make.
