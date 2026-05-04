@@ -165,14 +165,15 @@ Table:          dw Start,Exit
 
 Generates 16-bit little-endian words.
 
-### DD / DEFD
+### DD / DEFD / DWORD
 
 ```asm
 Longs:          dd #5678
 Ptr32:          defd Start
+HeaderValue:    dword #1234
 ```
 
-Generates 32-bit little-endian values. Expressions are evaluated as 16-bit values and padded with a zero high word.
+Generates 32-bit little-endian values. `DWORD` is a TASM-compatible alias. Expressions are evaluated as 16-bit values and padded with a zero high word.
 
 ### DUP / EDUP
 
@@ -273,7 +274,7 @@ Examples are stored in `examples/`:
 - `MIXED` - several include files from different directories;
 - `SAVE` - `SAVE`/`SAVEBIN`, `/N`, `BYTE`, `WORD`, `BLOCK`;
 - `COND` - conditional compilation and inactive branch skipping;
-- `TASM` - TASM-compatible `DISP`/`ENT`, `DD`/`DEFD`, `DUP`/`EDUP`, and grouped binary numbers;
+- `TASM` - TASM-compatible `DISP`/`ENT`, `DD`/`DEFD`/`DWORD`, `DUP`/`EDUP`, and grouped binary numbers;
 - `ERRORS` - intentionally invalid example for checking `/L`.
 
 Each example directory contains a Sprinter make `makefile` and a `make.bat` file for users without make.

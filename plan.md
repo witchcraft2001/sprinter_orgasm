@@ -58,9 +58,9 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 
 - [x] Add `DISP` and `ENT`, mapping to `PHASE`/`DEPHASE` after checking TASM relocation semantics.
 - [x] Add `DUP` and `EDUP` block repetition.
-- [x] Add `DEFD`/`DD` for little-endian 32-bit data.
+- [x] Add `DEFD`/`DD`/`DWORD` for little-endian 32-bit data.
 - [x] Add numeric compatibility where needed, including grouped binary literals such as `%0100'0000`.
-- [ ] Review `/Users/dmitry/dev/zx/sprinter/sources/tasm_071/TASM` after each feature and add focused regression examples. `DISP`/`ENT`, `DD`/`DEFD`, `DUP`/`EDUP`, and grouped binary literals are covered by `examples/TASM`.
+- [ ] Review `/Users/dmitry/dev/zx/sprinter/sources/tasm_071/TASM` after each feature and add focused regression examples. `DISP`/`ENT`, `DD`/`DEFD`/`DWORD`, `DUP`/`EDUP`, and grouped binary literals are covered by `examples/TASM`.
 - [ ] Add ASM examples that verify every new TASM compatibility directive or syntax form.
 - [ ] Document every newly supported compatibility directive and numeric format in `docs/` in Russian and English.
 

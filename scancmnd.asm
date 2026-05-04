@@ -394,6 +394,8 @@ TabCmnd		db 7,"ADC",#80
 		dw _dup
 		db 6,"DW",#81
 		dw _dw
+		db 9,"DWORD",#81
+		dw _dd
 		db 8,"EDUP",#81
 		dw _edup
 		db 6,"EI",1

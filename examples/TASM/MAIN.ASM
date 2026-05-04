@@ -9,6 +9,7 @@ Virt:   byte #02
         word Virt
         dd #5678
         defd Virt
+        dword #1234
         byte %0100'0000
         dup 3
         byte #11
