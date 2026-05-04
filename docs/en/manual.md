@@ -122,15 +122,19 @@ Sets the entry point for the EXE prefix. Without `ENTRY`, the load address is us
 
 Sets SP for the EXE prefix. The default value is `#bfff`.
 
-### PHASE / DEPHASE
+### PHASE / DEPHASE / DISP / ENT
 
 ```asm
                 phase #4000
 Relocated:      ret
                 dephase
+
+                disp #7000
+Virtual:        byte #01
+                ent
 ```
 
-Changes the assembly address without changing the physical object-code write address. Nested `PHASE` and `ORG` inside the block are not allowed.
+Changes the assembly address without changing the physical object-code write address. `DISP` is a TASM-compatible alias for `PHASE`, and `ENT` is an alias for `DEPHASE`. Nested `PHASE`/`DISP` and `ORG` inside the block are not allowed.
 
 ### EQU
 
@@ -158,6 +162,15 @@ Table:          dw Start,Exit
 
 Generates 16-bit little-endian words.
 
+### DD / DEFD
+
+```asm
+Longs:          dd #5678
+Ptr32:          defd Start
+```
+
+Generates 32-bit little-endian values. Expressions are evaluated as 16-bit values and padded with a zero high word.
+
 ### DS / DEFS / BLOCK
 
 ```asm
@@ -174,7 +187,7 @@ Reserves and fills memory. Without the second parameter, zero is used.
                 include "inc/text.asm"
 ```
 
-Includes another source file. If the extension is missing, `.asm` is appended. Nested `INCLUDE` files are supported.
+Includes another source file. If the extension is missing, `.asm` is appended. Nested `INCLUDE` files are supported, up to 64 source files per build.
 
 ### INCBIN
 
@@ -196,6 +209,8 @@ End:
 ```
 
 Saves a range of compiled code to a binary file after the second pass succeeds. Writes are deferred until the end of compilation, so failed builds do not create partial files. Use `/N` when the source should produce files only through explicit `SAVE`/`SAVEBIN` directives.
+
+One build can use up to 8 `SAVE`/`SAVEBIN` directives; the output file name in the directive is limited to 63 characters.
 
 ### Conditional Compilation
 
@@ -245,6 +260,7 @@ Examples are stored in `examples/`:
 - `MIXED` - several include files from different directories;
 - `SAVE` - `SAVE`/`SAVEBIN`, `/N`, `BYTE`, `WORD`, `BLOCK`;
 - `COND` - conditional compilation and inactive branch skipping;
+- `TASM` - TASM-compatible `DISP`/`ENT` and `DD`/`DEFD`;
 - `ERRORS` - intentionally invalid example for checking `/L`.
 
 Each example directory contains a Sprinter make `makefile` and a `make.bat` file for users without make.

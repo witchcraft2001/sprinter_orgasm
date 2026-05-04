@@ -642,6 +642,49 @@ _dw2		ld a,c
 
 		ld b,SyntaxEr	;"Синтаксическая ошибка"
 		jp SkipStrC	;выход с ошибкой
+;DD/DEFD ...
+_dd1		ld a,(hl)
+		inc hl
+_dd		cp " "		;пропуск начальных пробелов
+		call z,SkipSpace
+		cp #09		;и табуляции
+		call z,SkipSpace
+
+		push de
+		call GetVar
+		ex af,af' ;'
+		ld c,d
+		ld a,e		;младшее слово после калькулятора
+		pop de
+		call _ddput
+		ld a,c
+		call _ddput
+		xor a		;старшее слово равно 0 для 16-битных выражений
+		call _ddput
+		xor a
+		call _ddput
+		ex af,af' ;'
+_ddend		cp " "
+		call z,SkipSpace
+		cp #09
+		call z,SkipSpace
+		cp #0d
+		ret z
+		cp ":"
+		ret z
+		cp ";"
+		ret z
+		cp ","
+		jp z,_dd1
+		ld b,SyntaxEr	;"Синтаксическая ошибка"
+		jp SkipStrC
+
+_ddput		ld (de),a
+		inc de
+		inc b
+		ret nz
+		ld b,DBInstrEr	;"В DB, DW болше 255 байт"
+		jp SkipStrC
 ;DS ...
 _ds ; нижеследующее закомменчено для v0.2X
 ;		push hl
@@ -754,7 +797,7 @@ SVB2		inc a
 		ld (hl),d
 		inc hl
 		ld de,DataBuf
-		ld b,128
+		ld b,SaveReqNameLen
 SVB3		ld a,(de)
 		ld (hl),a
 		inc hl

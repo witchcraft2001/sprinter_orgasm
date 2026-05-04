@@ -366,10 +366,14 @@ TabCmnd		db 7,"ADC",#80
 		db #27,#00
 		db 6,"DB",#81
 		dw _db
+		db 6,"DD",#81
+		dw _dd
 		db 7,"DEC",#80
 		dw _dec
 		db 8,"DEFB",#81
 		dw _db
+		db 8,"DEFD",#81
+		dw _dd
 		db 10,"DEFINE",#81
 		dw _define
 		db 8,"DEFS",#81
@@ -380,6 +384,8 @@ TabCmnd		db 7,"ADC",#80
 		dw _dephase
 		db 6,"DI",1
 		db #f3,#00
+		db 8,"DISP",#81
+		dw _phase
 		db 8,"DJNZ",#80
 		dw _djnz
 		db 6,"DS",#81
@@ -394,6 +400,8 @@ TabCmnd		db 7,"ADC",#80
 		dw _elseif
 		db 9,"ENDIF",#81
 		dw _endif
+		db 7,"ENT",#81
+		dw _dephase
 		db 9,"ENTRY",#81	; добавлено в v0.2X
 		dw _entry		; добавлено в v0.2X
 		db 6,"EX",#80
