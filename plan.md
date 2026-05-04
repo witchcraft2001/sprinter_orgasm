@@ -45,6 +45,7 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 - [x] Support `DEFINE name value`.
 - [x] Support `UNDEFINE name`.
 - [x] Support `IF expr`, `IFN expr`, `IFDEF name`, and `IFNDEF name`.
+- [ ] Add symbol-usage conditionals such as `IFUSED label` and `IFNUSED label` after label reference tracking exists.
 - [x] Support `ELSEIF expr`, `ELSE`, and `ENDIF`.
 - [x] Ensure inactive branches are skipped without parsing labels, mnemonics, or invalid code.
 - [x] Support colon-separated conditional directives, for example:
@@ -56,10 +57,10 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 ## Stage 4: TASM Source Compatibility Subset
 
 - [x] Add `DISP` and `ENT`, mapping to `PHASE`/`DEPHASE` after checking TASM relocation semantics.
-- [ ] Add `DUP` and `EDUP` block repetition.
+- [x] Add `DUP` and `EDUP` block repetition.
 - [x] Add `DEFD`/`DD` for little-endian 32-bit data.
 - [x] Add numeric compatibility where needed, including grouped binary literals such as `%0100'0000`.
-- [ ] Review `/Users/dmitry/dev/zx/sprinter/sources/tasm_071/TASM` after each feature and add focused regression examples. `DISP`/`ENT` and `DD`/`DEFD` are covered by `examples/TASM`.
+- [ ] Review `/Users/dmitry/dev/zx/sprinter/sources/tasm_071/TASM` after each feature and add focused regression examples. `DISP`/`ENT`, `DD`/`DEFD`, `DUP`/`EDUP`, and grouped binary literals are covered by `examples/TASM`.
 - [ ] Add ASM examples that verify every new TASM compatibility directive or syntax form.
 - [ ] Document every newly supported compatibility directive and numeric format in `docs/` in Russian and English.
 

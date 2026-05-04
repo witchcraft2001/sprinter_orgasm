@@ -390,8 +390,12 @@ TabCmnd		db 7,"ADC",#80
 		dw _djnz
 		db 6,"DS",#81
 		dw _ds
+		db 7,"DUP",#81
+		dw _dup
 		db 6,"DW",#81
 		dw _dw
+		db 8,"EDUP",#81
+		dw _edup
 		db 6,"EI",1
 		db #fb,#00
 		db 8,"ELSE",#81

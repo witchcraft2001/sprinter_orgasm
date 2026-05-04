@@ -174,6 +174,16 @@ Ptr32:          defd Start
 
 Generates 32-bit little-endian values. Expressions are evaluated as 16-bit values and padded with a zero high word.
 
+### DUP / EDUP
+
+```asm
+                dup 3
+                byte #11
+                edup
+```
+
+Repeats the lines between `DUP` and `EDUP` the requested number of times. One active `DUP` block is supported; nested blocks are not supported.
+
 ### DS / DEFS / BLOCK
 
 ```asm
@@ -263,7 +273,7 @@ Examples are stored in `examples/`:
 - `MIXED` - several include files from different directories;
 - `SAVE` - `SAVE`/`SAVEBIN`, `/N`, `BYTE`, `WORD`, `BLOCK`;
 - `COND` - conditional compilation and inactive branch skipping;
-- `TASM` - TASM-compatible `DISP`/`ENT` and `DD`/`DEFD`;
+- `TASM` - TASM-compatible `DISP`/`ENT`, `DD`/`DEFD`, `DUP`/`EDUP`, and grouped binary numbers;
 - `ERRORS` - intentionally invalid example for checking `/L`.
 
 Each example directory contains a Sprinter make `makefile` and a `make.bat` file for users without make.

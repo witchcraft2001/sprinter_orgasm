@@ -10,6 +10,9 @@ Virt:   byte #02
         dd #5678
         defd Virt
         byte %0100'0000
+        dup 3
+        byte #11
+        edup
 
 End:
         savebin "TASM.BIN",#6200,End-#6200

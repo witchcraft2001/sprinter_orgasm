@@ -126,6 +126,71 @@ _endif		call CondEndOnly
 		ld b,0
 		ret
 ;
+;DUP expr / EDUP
+_dup		ld c,a
+		ld a,(DupActive)
+		or a
+		jp nz,CondSyntax
+		ld a,c
+		call CondEval
+		ld a,d
+		or e
+		jp z,CondSyntax
+		ld (DupCount),de
+		ld a,(CondDelim)
+		call DupEndLine
+		ld (CondDelim),a
+		ld a,#ff
+		ld (DupActive),a
+		ld (DupPendingFlag),a
+		ld a,(CondDelim)
+		ld b,0
+		ret
+_edup		ld c,a
+		ld a,(DupActive)
+		or a
+		jp z,CondSyntax
+		ld a,c
+		call DupEndLine
+		ld (CondDelim),a
+		push hl
+		ld hl,(DupCount)
+		dec hl
+		ld (DupCount),hl
+		ld a,h
+		or l
+		jr z,EDUP1
+		ld a,#ff
+		ld (DupJumpFlag),a
+		ld hl,(DupStartAdr)
+		ld (DupJumpAdr),hl
+		ld a,(DupStartPage)
+		ld (DupJumpPage),a
+		ld hl,(DupStartLine)
+		ld (DupJumpLine),hl
+		jr EDUP2
+EDUP1		xor a
+		ld (DupActive),a
+EDUP2		pop hl
+		ld a,(CondDelim)
+		ld b,0
+		ret
+DupEndLine	cp #20
+		call z,SkipSpace
+		cp #09
+		call z,SkipSpace
+		cp #0d
+		ret z
+		cp ";"
+		jr nz,DELERR
+DEL1		ld a,(hl)
+		inc hl
+		cp #0d
+		jr nz,DEL1
+		ret
+DELERR		ld b,SyntaxEr
+		jp SkipStrC
+;
 ;Общие процедуры условной компиляции.
 CondEval	cp #20
 		jr z,CEV1
