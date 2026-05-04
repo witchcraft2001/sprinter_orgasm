@@ -294,11 +294,14 @@ NumBin          ex de,hl
                 ld b,a          ;символ, на котором попали в процедуру
                 ld hl,#00000
 NB1             ld a,(de)
+                cp "'"
+                jr z,NB2
                 sub #30
                 srl a
                 jr nz,ExNumBin
                 rl l
                 rl h
+NB2
                 inc de
 ;                inc c
                 jr NB1

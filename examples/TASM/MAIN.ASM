@@ -9,6 +9,7 @@ Virt:   byte #02
         word Virt
         dd #5678
         defd Virt
+        byte %0100'0000
 
 End:
         savebin "TASM.BIN",#6200,End-#6200

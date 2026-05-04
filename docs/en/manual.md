@@ -80,9 +80,12 @@ Decimal, hexadecimal, and binary numbers are supported:
 0C000h
 0x8F12
 %00110011
+%0100'0000
 10010110b
 0b01010101
 ```
+
+Binary numbers may use apostrophes as group separators.
 
 `$` means the address of the current instruction. Characters in single or double quotes evaluate to their character code.
 
