@@ -69,7 +69,7 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 ## Stage 5: Banked Project Output
 
 - [ ] Introduce an output backend boundary so instruction/data emission goes through shared `EmitByte`/`EmitBlock` routines instead of directly assuming one linear output buffer.
-- [ ] Keep the existing linear output backend for legacy builds.
+- [ ] Keep the existing linear output backend for current single-buffer builds.
 - [ ] Add a virtual device memory backend with 16K pages suitable for Sprinter-style banked projects.
 - [ ] Add minimal page mapping directives:
   - `DEVICE SPRINTER[,pages]`
@@ -105,12 +105,22 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 - [x] Evaluate `OUTPUT`/`OUTEND` support or map it to the new output-range mechanism.
 - [x] Add `DISPLAY "text"` as a useful assembly-time diagnostic directive.
 - [x] Add remaining useful diagnostics directives if needed: `ASSERT`, `ERROR`, and `WARNING`.
+- [x] Split the Sprinter executable into a small EXE loader and a resident OrgAsm core, with packed and unpacked build modes, to reduce low-memory pressure while restoring `MaxLoadFile` to 64.
 - [ ] Decide whether `ALIGN` is needed separately from `BLOCK`.
 - [ ] Define a deliberate boundary for unsupported sjasmplus features, especially `LUA`, `ENDLUA`, and `INCLUDELUA`.
 - [ ] Consider macro support only after the previous stages are stable.
-- [ ] Revisit low-memory workspace pressure before adding more parser features; diagnostics required reducing `MaxLoadFile` from 64 to 32 to keep `ComBuffer` safely below `#8000`.
+- [ ] Revisit low-memory workspace pressure before adding more parser features; the loader/core split restored `MaxLoadFile` to 64, but `ComBuffer` and the stack still share the top of the resident core workspace.
 - [x] Add ASM examples for every newly supported extended sjasmplus directive.
 - [ ] Document the supported sjasmplus subset and explicitly unsupported features in `docs/` in Russian and English.
+
+## Long-Term Memory Model
+
+- [ ] Reserve `win2` as a permanent OrgAsm data page to stop resident-code growth in `win1` from competing with the stack and command-line buffers:
+  - `win1 #4000..#7FFF`: resident code
+  - `win2 #8000..#BFFF`: permanent OrgAsm data, including stack, `ComBuffer`, `SaveReqTable`, `TblLoadFile`, and large temporary buffers
+  - `win3 #C000..#FFFF`: the only bank-switched data window for source text, labels, object code, and report/log data
+- [ ] Before changing the memory model, introduce a small access layer for bank-switched source/object/label/report blocks so code no longer assumes a contiguous `win2+win3` 32K data window.
+- [ ] Audit and rewrite all direct `SetWin2`/`SetWin3`, `Page2`/`Page3`, `#8000`/`#C000`, and `bit 6,h` boundary assumptions as part of the memory-model migration.
 
 ## Verification Checklist
 

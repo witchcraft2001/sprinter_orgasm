@@ -3,9 +3,14 @@ SJASMPLUS ?= sjasmplus
 OUT_DIR := out
 DIST_DIR := distr
 TARGET := $(OUT_DIR)/orgasm.exe
+CORE := $(OUT_DIR)/core.bin
+PACKED_CORE := $(OUT_DIR)/core.hst
+UNPACKED_TARGET := $(OUT_DIR)/orgunpk.exe
 IMAGE := $(DIST_DIR)/orgasm.img
 ZIP := $(DIST_DIR)/orgasm.zip
 SRC := orgasm.asm
+LOADER_SRC := orgload.asm
+MHMT := tools/mhmt
 DEPS := \
 	scanstr.asm \
 	scancmnd.asm \
@@ -17,12 +22,23 @@ DEPS := \
 	util.asm \
 	error.asm
 
-.PHONY: all image package dist clean distclean
+.PHONY: all unpacked image package dist clean distclean
 
 all: $(TARGET)
 
-$(TARGET): $(SRC) $(DEPS) | $(OUT_DIR)
+$(CORE): $(SRC) $(DEPS) | $(OUT_DIR)
 	$(SJASMPLUS) --raw=$@ $(SRC)
+
+$(PACKED_CORE): $(CORE) $(MHMT) | $(OUT_DIR)
+	$(MHMT) -hst -zxh $(CORE) $(PACKED_CORE)
+
+$(TARGET): $(LOADER_SRC) depack.asm $(PACKED_CORE) | $(OUT_DIR)
+	$(SJASMPLUS) --raw=$@ $(LOADER_SRC)
+
+$(UNPACKED_TARGET): $(LOADER_SRC) $(CORE) | $(OUT_DIR)
+	$(SJASMPLUS) -DORGASM_UNPACKED --raw=$@ $(LOADER_SRC)
+
+unpacked: $(UNPACKED_TARGET)
 
 $(OUT_DIR):
 	mkdir -p $@

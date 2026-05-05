@@ -4,14 +4,7 @@ OrgAsm v0.29 is a two-pass Z80 assembler for the Sprinter computer under DSS. Th
 
 ## Requirements
 
-Running `ORGASM.EXE` requires the target Sprinter environment with BIOS 3.xx and DSS Estex. Local source builds use `sjasmplus`:
-
-```sh
-make
-make dist
-```
-
-`make` creates `out/orgasm.exe`. `make dist` creates the floppy image `distr/orgasm.img` and the zip distribution `distr/orgasm.zip`.
+Running `ORGASM.EXE` requires the target Sprinter environment with BIOS 3.xx and DSS Estex.
 
 ## Command Line
 

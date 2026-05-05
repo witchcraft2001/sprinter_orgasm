@@ -12,26 +12,14 @@
 ;
 ; https://gitlab.com/sprinter-computer/apps/-/tree/master/OrgAsm
 ;
-; to build use this command: zmac orgasm.asm
+; to build the repository version use Makefile targets documented in README.md
 
 ;Deb             equ 1           ;1 - асемблить отладочный код
                                 ;0 - не асемблить
 
-Start           equ #4200
-                org #4000
-
-                db "EXE"        ;EXE ID
-                db #01          ;EXE VERSION
-                dw #0200        ;CODE OFFSET LOW
-                dw #0000        ;CODE OFFSET HIGH
-                dw #0000        ;PRIMARY LOADER
-                dw #0000        ;
-                dw #0000        ;RESERVED
-                dw #0000        ;
-                dw Start        ;LOAD ADDRESS
-                dw Start        ;START ADDRESS
-                dw #bfff        ;STACK ADDRESS
-                ds 490
+Start           equ #4100
+CoreCommandLine equ #4000
+                org Start
 
 ;
 ;Функции DSS Estex
@@ -83,8 +71,6 @@ Page2           equ #c2
 Page3           equ #e2
 
 Main
-                push ix         ;адрес параметров командной строки
-
                 ld c,SysTime
                 rst #10         ;время начала компиляции
                 ld (TimeComp+1),hl
@@ -95,10 +81,10 @@ Main
 ;                ld c,PChars
 ;                rst #10
 
-                pop hl
+                ld hl,CoreCommandLine
                 ld a,(hl)       ;длина параметров командной строки
                 or a
-                jp z,PrintHelp  ;печать краткой справки по программе
+                jp z,ExitDSS
 
                 inc hl          ;пропускаем длину параметров
                 ld de,ComBuffer-1
@@ -314,10 +300,6 @@ ComStr9         ld hl,(RepFAdr) ;создаем имя файла-репорта
                 inc hl
                 xor a
                 ld (hl),a
-
-                ld hl,Hello
-                ld c,PChars
-                rst #10
 
 ;                if Deb
 ;                call PrintParam
@@ -1866,21 +1848,6 @@ Error0
                 rst #10
                 jp ExitDSS
 
-;При отсутствии параметров в командной строке
-;на экран выводится краткий HELP
-;
-PrintHelp
-                ld hl,Hello
-                ld c,PChars
-                rst #10         ;печать приветствия
-                ld hl,Help
-                ld c,PChars
-                rst #10         ;печать подсказки
-                ld b,0
-                ld c,Exit
-                rst #10         ;выход из программы
-                ret
-
 ;                include scanstr
 ;                include scancmnd
 ;                include d_mnem
@@ -1911,16 +1878,6 @@ VarTMem         db "     " ; для zmac переделано - было ds 5," 
 FreeMem1        db "Free memory:  "
 VarFMem         db "     " ; для zmac переделано - было ds 5," " (Shaos)
                 db "kB",13,10,0
-Hello           db 13,10
-                db "OrgAsm v0.29",13,10,0
-Help            db "by Igor Zhadinets <Alpha Studio> and Dmitry Mikhalchenkov",13,10,10
-                db 'OrgAsm [drv:\path\]inFile[.ext] [drv:\path\outFile.ext] [/options]',13,10,10
-                db '/E - create EXE-prefix  ',13,10
-                db '/C - upper Case significant in symbols',13,10
-                db '/L[:file] - create Error log on errors',13,10
-                db '/M - create Symbol table   ',13,10
-                db '/N - no implicit output file',13,10
-                db '/S - clear Screen',13,10,0
 PassText        db "Pass 1",13,10,0
 Scanning        db 13,10,"Scanning Symbol table...     ",13,10,0 ; новое в v0.2X
 Loading         db 13,10,"Load file: ",0
@@ -2048,7 +2005,7 @@ OutputReqLenPtr dw 0            ;адрес длины в записи SAVE дл
 NumOpenFile     db #00          ;порядковый номер открываемого файла
 CurrentFile     db #ff          ;номер текущего ассемблируемого файла
 AdrOpenFile     dw #bfff        ;адрес начала загрузки очередного файла -1
-MaxLoadFile     equ 32          ;максимальное количество исходных файлов
+MaxLoadFile     equ 64          ;максимальное количество исходных файлов
 LoadFileRecSize equ 12          ;размер записи TblLoadFile
                 ;+0 - номер банки загрузки файла -1 (1)
                 ;+1 - адрес загрузки файла в 3-е окно (2)

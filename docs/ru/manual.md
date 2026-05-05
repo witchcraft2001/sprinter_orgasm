@@ -4,14 +4,7 @@ OrgAsm v0.29 - двухпроходный ассемблер Z80 для комп
 
 ## Требования
 
-Для запуска `ORGASM.EXE` нужна целевая среда Sprinter с BIOS 3.xx и DSS Estex. Локальная сборка исходников выполняется через `sjasmplus`:
-
-```sh
-make
-make dist
-```
-
-`make` создает `out/orgasm.exe`. `make dist` создает образ дискеты `distr/orgasm.img` и zip-дистрибутив `distr/orgasm.zip`.
+Для запуска `ORGASM.EXE` нужна целевая среда Sprinter с BIOS 3.xx и DSS Estex.
 
 ## Командная строка
 
