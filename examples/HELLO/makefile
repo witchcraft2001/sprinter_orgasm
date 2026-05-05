@@ -1,6 +1,7 @@
 ASM = ..\..\ORGASM.EXE
 SRC = HELLO.ASM
 OUT = HELLO.EXE
+DELTOOL = MKDEL.EXE
 
 .PHONY: all clean
 
@@ -10,5 +11,5 @@ $(OUT): $(SRC)
 	$(ASM) $(SRC) $(OUT) /E /L=HELLO.ERR
 
 clean:
-	-DEL $(OUT)
-	-DEL HELLO.ERR
+	-$(DELTOOL) $(OUT)
+	-$(DELTOOL) HELLO.ERR

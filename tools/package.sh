@@ -88,7 +88,7 @@ copy_example_file() {
   local dst="$2"
 
   if is_example_text_file "$dst"; then
-    awk '{ sub(/\r$/, ""); printf "%s\r", $0 }' "$src" > "$package_dir/EXAMPLES/$dst"
+    awk '{ sub(/\r$/, ""); printf "%s\r\n", $0 }' "$src" > "$package_dir/EXAMPLES/$dst"
   else
     cp "$src" "$package_dir/EXAMPLES/$dst"
   fi

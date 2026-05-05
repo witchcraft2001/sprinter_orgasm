@@ -1,6 +1,7 @@
 ASM = ..\..\ORGASM.EXE
 SRC = MAIN.ASM
 OUT = TASM.BIN
+DELTOOL = MKDEL.EXE
 
 .PHONY: all clean
 
@@ -10,6 +11,6 @@ $(OUT): $(SRC)
 	$(ASM) $(SRC) /N /L=TASM.ERR
 
 clean:
-	-DEL $(OUT)
-	-DEL TOUT.BIN
-	-DEL TASM.ERR
+	-$(DELTOOL) $(OUT)
+	-$(DELTOOL) TOUT.BIN
+	-$(DELTOOL) TASM.ERR

@@ -1,6 +1,7 @@
 ASM = ..\..\ORGASM.EXE
 SRC = LOCAL.ASM
 OUT = LOCAL.EXE
+DELTOOL = MKDEL.EXE
 
 .PHONY: all clean
 
@@ -10,5 +11,5 @@ $(OUT): $(SRC)
 	$(ASM) $(SRC) $(OUT) /E /L=LOCAL.ERR
 
 clean:
-	-DEL $(OUT)
-	-DEL LOCAL.ERR
+	-$(DELTOOL) $(OUT)
+	-$(DELTOOL) LOCAL.ERR

@@ -1,6 +1,7 @@
 ASM = ..\..\ORGASM.EXE
 SRC = MAIN.ASM
 OUT = DIAG.BIN
+DELTOOL = MKDEL.EXE
 
 .PHONY: all clean
 
@@ -10,5 +11,5 @@ $(OUT): $(SRC)
 	$(ASM) $(SRC) /N /L=DIAG.ERR
 
 clean:
-	-DEL $(OUT)
-	-DEL DIAG.ERR
+	-$(DELTOOL) $(OUT)
+	-$(DELTOOL) DIAG.ERR

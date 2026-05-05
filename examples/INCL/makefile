@@ -2,6 +2,7 @@ ASM = ..\..\ORGASM.EXE
 SRC = MAIN.ASM
 OUT = INCL.EXE
 INC = INC\TEXT.ASM
+DELTOOL = MKDEL.EXE
 
 .PHONY: all clean
 
@@ -11,5 +12,5 @@ $(OUT): $(SRC) $(INC)
 	$(ASM) $(SRC) $(OUT) /E /L=INCL.ERR
 
 clean:
-	-DEL $(OUT)
-	-DEL INCL.ERR
+	-$(DELTOOL) $(OUT)
+	-$(DELTOOL) INCL.ERR

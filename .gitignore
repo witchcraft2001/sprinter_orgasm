@@ -2,3 +2,4 @@ out/*
 AGENTS.md
 CLAUDE.md
 distr/*
+.DS_Store

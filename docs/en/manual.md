@@ -34,6 +34,8 @@ file.asm:12: Syntax error
 
 The `.ERR` file is created only after the first error. OrgAsm exits through DSS `EXIT #41` with return code `0` in `B` after a successful build and `1` when compiler or DSS errors stop output generation.
 
+During compilation OrgAsm polls the keyboard between source lines and during long file load/save operations. Press `Ctrl+C` to cancel the current build; OrgAsm prints a cancellation message, closes open files, frees allocated memory, and exits with return code `1`.
+
 ## Source Line Format
 
 ```asm
@@ -294,7 +296,7 @@ Examples are stored in `examples/`:
 - `TASM` - TASM-compatible `DISP`/`ENT`, `DD`/`DEFD`/`DWORD`, `DUP`/`EDUP`, `OUTPUT`/`OUTEND`, and grouped binary numbers;
 - `ERRORS` - intentionally invalid example for checking `/L` and active `ERROR`.
 
-Each example directory contains a Sprinter make `makefile` and a `make.bat` file for users without make.
+Each example directory contains a Sprinter make `makefile` and a `build.bat` file for users without make.
 
 ## Distribution
 

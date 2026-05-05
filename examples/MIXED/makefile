@@ -4,6 +4,7 @@ OUT = MIXED.EXE
 ROOT = ROOT.ASM
 INCA = DIRA\A.ASM
 INCB = DIRB\B.ASM
+DELTOOL = MKDEL.EXE
 
 .PHONY: all clean
 
@@ -13,5 +14,5 @@ $(OUT): $(SRC) $(ROOT) $(INCA) $(INCB)
 	$(ASM) $(SRC) $(OUT) /E /L=MIXED.ERR
 
 clean:
-	-DEL $(OUT)
-	-DEL MIXED.ERR
+	-$(DELTOOL) $(OUT)
+	-$(DELTOOL) MIXED.ERR

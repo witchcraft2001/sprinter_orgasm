@@ -38,6 +38,8 @@ ChDir           equ #1d
 SysTime         equ #21
 WaitKey         equ #30
 ScanKey         equ #31
+ScanCKey        equ #ac
+CtrlKeyMask     equ #2a
 SetWin          equ #38
 SetWin1         equ #39
 SetWin2         equ #3a
@@ -474,6 +476,16 @@ AsmNoDupJump
                 ld c,ScanKey
                 rst #10         ;сканирование клавиатуры
                 jr z,AsmF7
+                ld a,e
+                cp #03
+                jr z,AsmAbortKey
+                ld a,b
+                and CtrlKeyMask
+                jr z,AsmPauseKey
+                ld a,d
+                cp ScanCKey
+                jr z,AsmAbortKey
+AsmPauseKey
                 ld c,Cursor
                 rst #10         ;положение курсора на экране
                 ld e,25
@@ -487,6 +499,8 @@ AsmNoDupJump
                 rst #10         ;ожидание нажатия клавиши
                 cp #1b          ;нажата <Esc>?
                 jp z,ExitDSS    ;принудительное завершение работы
+                cp #03          ;нажато <Ctrl+C>?
+                jr z,AsmAbortPauseKey
                 pop de
                 ld c,Locate
                 rst #10         ;текущие координаты
@@ -501,6 +515,17 @@ AsmF8           push bc
                 rst #10         ;в начало строки
 AsmF7           pop hl
                 pop af
+                jr AsmNoAbort
+
+AsmAbortKey     pop hl
+                pop af
+                jp UserAbort
+
+AsmAbortPauseKey
+                pop de
+                jr AsmAbortKey
+
+AsmNoAbort
 
 AsmF5           ld a,(hl)
                 or a
@@ -1085,6 +1110,7 @@ SOF1A           ld bc,(SaveOutID)
 
 SOF1            push af
                 push bc
+                call CheckUserAbort
                 ld c,SetWin3
                 rst #10         ;банку в 3-тье окно
                 jp c,Error
@@ -1145,6 +1171,7 @@ SDF0            ld hl,(SaveReqCur)
                 or a
                 sbc hl,de
                 ret z
+                call CheckUserAbort
                 ld hl,(SaveReqCur)
                 ld e,(hl)
                 inc hl
@@ -1195,6 +1222,7 @@ SRF1            ld hl,(SaveLenTmp)
                 ld a,h
                 or l
                 jr z,SRF4
+                call CheckUserAbort
                 ld a,(SaveCurPage)
                 ld b,a
                 ld a,(OutFileID)
@@ -1474,7 +1502,8 @@ LF1             ld (NumOpenFile),a
                 pop af
                 ld (CurrentFile),a
 
-LF4             push bc
+LF4             call CheckUserAbort
+                push bc
                 ld a,c
                 ld c,SetWin3
                 rst #10         ;банку в 3-е окно
@@ -1689,6 +1718,39 @@ H2D1            cp (hl)
                 inc hl
                 djnz H2D1
                 ret
+
+CheckUserAbort  push af
+                push bc
+                push de
+                push hl
+                ld c,ScanKey
+                rst #10
+                jr z,CUA1
+                ld a,e
+                cp #03
+                jr z,CUA2
+                ld a,b
+                and CtrlKeyMask
+                jr z,CUA1
+                ld a,d
+                cp ScanCKey
+                jr z,CUA2
+CUA1            pop hl
+                pop de
+                pop bc
+                pop af
+                ret
+CUA2            pop hl
+                pop de
+                pop bc
+                pop af
+
+UserAbort       ld hl,1
+                ld (ErrorPass),hl
+                ld hl,AbortMsg
+                ld c,PChars
+                rst #10
+                jp ExitDSS
 ;
 ;Вызов функций DSS с установкой стека и страницы.
 ;
@@ -1893,6 +1955,7 @@ ErrColon        db ":",0
 ErrColonSpace   db ": ",0
 ErrCRLF         db 13,10,0
 PrPause         db "Pause...  <Esc> to Exit or <AnyKey> to Continue",0
+AbortMsg        db 13,10,"Compilation cancelled by Ctrl+C",13,10,0
 PrTimeComp      db 13,10,"Compile time - 00:00",13,10,10,0
 CRLF            db 10,13,0
 ;

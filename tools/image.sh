@@ -94,7 +94,7 @@ copy_example_file() {
   local converted="$tmp_dir/$(basename "$dst").cr"
 
   if is_example_text_file "$dst"; then
-    awk '{ sub(/\r$/, ""); printf "%s\r", $0 }' "$src" > "$converted"
+    awk '{ sub(/\r$/, ""); printf "%s\r\n", $0 }' "$src" > "$converted"
     mcopy -i "$image_path" -o "$converted" "::/EXAMPLES/$dst"
   else
     mcopy -i "$image_path" -o "$src" "::/EXAMPLES/$dst"
