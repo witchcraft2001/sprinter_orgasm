@@ -340,6 +340,8 @@ TabCmnd		db 7,"ADC",#80
 		dw _add
 		db 7,"AND",#80
 		dw _and
+		db 10,"ASSERT",#81
+		dw _assert
 		db 7,"BIT",#80
 		dw _bit
 		db 9,"BLOCK",#81
@@ -412,6 +414,8 @@ TabCmnd		db 7,"ADC",#80
 		dw _dephase
 		db 9,"ENTRY",#81	; добавлено в v0.2X
 		dw _entry		; добавлено в v0.2X
+		db 9,"ERROR",#81
+		dw _error
 		db 6,"EX",#80
 		dw _ex
 		db 7,"EXA",1
@@ -546,6 +550,8 @@ TabCmnd		db 7,"ADC",#80
 		dw _sub
 		db 12,"UNDEFINE",#81
 		dw _undefine
+		db 11,"WARNING",#81
+		dw _display
 		db 8,"WORD",#81
 		dw _dw
 		db 7,"XOR",#80

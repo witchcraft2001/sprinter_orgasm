@@ -39,7 +39,7 @@ file.asm:12: Syntax error
     source line
 ```
 
-The `.ERR` file is created only after the first error.
+The `.ERR` file is created only after the first error. OrgAsm exits through DSS `EXIT #41` with return code `0` in `B` after a successful build and `1` when compiler or DSS errors stop output generation.
 
 ## Source Line Format
 
@@ -238,13 +238,16 @@ Start:          byte #3e,#2a
 
 One build can use up to 8 deferred output files through `SAVE`, `SAVEBIN`, and `OUTPUT`; the output file name in the directive is limited to 63 characters.
 
-### DISPLAY
+### Diagnostics
 
 ```asm
                 display "Building DIAG example"
+                warning "Check build flags"
+                assert 1,"Diagnostic check"
+                error "Unsupported build option"
 ```
 
-Prints a message during assembly. The message is printed on the second pass, so it is not duplicated. The string must be quoted with single or double quotes.
+`DISPLAY` and `WARNING` print a message during assembly. `ERROR` prints a message and fails the build with a `User error` diagnostic. `ASSERT` evaluates an expression and fails with `Assertion failed` when the expression is zero; an optional quoted message can be supplied after a comma. `DISPLAY`, `WARNING`, and `ASSERT` messages are printed on the second pass, so they are not duplicated; active `ERROR` fails immediately. Message strings must be quoted with single or double quotes.
 
 ### Conditional Compilation
 
@@ -294,9 +297,9 @@ Examples are stored in `examples/`:
 - `MIXED` - several include files from different directories;
 - `SAVE` - `SAVE`/`SAVEBIN`, `/N`, `BYTE`, `WORD`, `BLOCK`;
 - `COND` - conditional compilation and inactive branch skipping;
-- `DIAG` - diagnostic `DISPLAY` output;
+- `DIAG` - diagnostic `DISPLAY`, `WARNING`, and `ASSERT`;
 - `TASM` - TASM-compatible `DISP`/`ENT`, `DD`/`DEFD`/`DWORD`, `DUP`/`EDUP`, `OUTPUT`/`OUTEND`, and grouped binary numbers;
-- `ERRORS` - intentionally invalid example for checking `/L`.
+- `ERRORS` - intentionally invalid example for checking `/L` and active `ERROR`.
 
 Each example directory contains a Sprinter make `makefile` and a `make.bat` file for users without make.
 

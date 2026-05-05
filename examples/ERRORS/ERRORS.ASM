@@ -4,9 +4,10 @@
 DSS     equ #10
 PChars  equ #5c
 
-        org #8100
-        entry Start
-        stack #bfff
+	        org #8100
+	        entry Start
+	        stack #bfff
+	        error "Explicit diagnostic error"
 
 Start   ld hl,Message
         ld a,(MissingLabel)

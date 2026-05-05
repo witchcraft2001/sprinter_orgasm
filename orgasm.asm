@@ -797,20 +797,33 @@ OpenErrLog      ld a,(ErrFile)
                 jr z,OpenErrLog1
                 ld hl,ErrNameBuf
                 jr OpenErrLog2
-OpenErrLog1     ld hl,(SomeAdr)
-                ld a,'e'
-                ld (hl),a
-                inc hl
-                ld a,'r'
-                ld (hl),a
-                inc hl
-                ld (hl),a
-                ld hl,(RepFAdr)
+OpenErrLog1     call MakeDefaultErrName
+                ld hl,ErrNameBuf
 OpenErrLog2     ld a,00100000b
                 ld c,Create
                 rst #10
                 ret c
                 ld (ErrOpenFile),a
+                ret
+
+MakeDefaultErrName
+                ld hl,ComBuffer
+                ld de,ErrNameBuf
+MDEN1           ld a,(hl)
+                ld (de),a
+                inc hl
+                inc de
+                or a
+                jr nz,MDEN1
+                dec de
+                dec de
+                ld a,'r'
+                ld (de),a
+                dec de
+                ld (de),a
+                dec de
+                ld a,'e'
+                ld (de),a
                 ret
 
 CloseErrLog     ld a,(ErrOpenFile)
@@ -1801,6 +1814,12 @@ FrMem2          ld c,(hl)
                 pop hl
 FrMem1          djnz FrMem2
 
+                ld hl,(ErrorPass)
+                ld a,h
+                or l
+                ld b,0
+                jr z,EDSS3
+                inc b
 EDSS3           ld c,Exit       ;выход из программы
                 rst #10
                 ret
@@ -1808,6 +1827,8 @@ EDSS3           ld c,Exit       ;выход из программы
 ;Выход из программы с ошибкой
 ;
 ErrorDSS1
+                ld hl,1
+                ld (ErrorPass),hl
                 ld hl,ErrorPort
                 ld c,PChars
                 rst #10
@@ -1820,6 +1841,10 @@ ErrorDSS
 ;                ld sp,#bfff     ;установили стек
 ;
 Error
+                push af
+                ld hl,1
+                ld (ErrorPass),hl
+                pop af
                 cp #21
                 jr c,Error0     ;код ошибки < 20h ?
                 ld a,#20
@@ -1851,6 +1876,7 @@ PrintHelp
                 ld hl,Help
                 ld c,PChars
                 rst #10         ;печать подсказки
+                ld b,0
                 ld c,Exit
                 rst #10         ;выход из программы
                 ret
@@ -2022,7 +2048,7 @@ OutputReqLenPtr dw 0            ;адрес длины в записи SAVE дл
 NumOpenFile     db #00          ;порядковый номер открываемого файла
 CurrentFile     db #ff          ;номер текущего ассемблируемого файла
 AdrOpenFile     dw #bfff        ;адрес начала загрузки очередного файла -1
-MaxLoadFile     equ 64          ;максимальное количество исходных файлов
+MaxLoadFile     equ 32          ;максимальное количество исходных файлов
 LoadFileRecSize equ 12          ;размер записи TblLoadFile
                 ;+0 - номер банки загрузки файла -1 (1)
                 ;+1 - адрес загрузки файла в 3-е окно (2)

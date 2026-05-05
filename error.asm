@@ -18,6 +18,8 @@ DivZeroEr	equ #0e
 LabelTabEr	equ #8f
 StackOpEr	equ #90
 GeneralFail	equ #91
+UserError	equ #12
+AssertionEr	equ #13
 
 ErrorAsm
 ;		 exa
@@ -42,7 +44,7 @@ ErrorAsm
 		push bc
 		ld a,b
 		res 7,a		;сбрасываем бит фатальной ошибки
-		cp #12
+		cp #14
 		jr c,ErAsm1
 		ld a,#11
 ErAsm1		dec a
@@ -183,8 +185,8 @@ ErrAsmTbl	dw er01
 		dw er8F
 		dw er90
 		dw er91
-;		 dw er12
-;		 dw er13
+		dw er12
+		dw er13
 ;		 dw er14
 ;		 dw er15
 
@@ -205,3 +207,5 @@ er0E		db "Division by zero",0
 er8F		db "Overflowing of labels table",0
 er90		db "Overflowing of operations stack",0
 er91		db "General failure",0
+er12		db "User error",0
+er13		db "Assertion failed",0

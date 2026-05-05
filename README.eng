@@ -37,6 +37,8 @@ specific file. Log records use the compact format:
   source line
 
 Errors from the main source and INCLUDE files are written to the same log.
+OrgAsm returns DSS exit code 0 on successful builds and 1 when compiler or
+DSS errors stop output generation.
 
 The /N option disables the implicit command-line output file. Use it for
 sources where all output files are produced by SAVE, SAVEBIN, or OUTPUT
@@ -65,7 +67,7 @@ ORG, PHASE (DISP), DEPHASE (ENT), EQU, DEFB (DB, BYTE),
 DEFW (DW, WORD), DEFD (DD, DWORD),
 DEFS (DS, BLOCK), INCLUDE, INCBIN, SAVE, SAVEBIN, OUTPUT, OUTEND.
 DEFINE, IF, IFN, IFDEF, IFNDEF, ELSEIF, ELSE, ENDIF.
-UNDEFINE. DUP, EDUP. DISPLAY.
+UNDEFINE. DUP, EDUP. DISPLAY, WARNING, ERROR, ASSERT.
 Conditional directives can be chained with ":".
 
 About ORG:

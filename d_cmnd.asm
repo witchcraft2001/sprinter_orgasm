@@ -183,11 +183,125 @@ _display	ld de,DataBuf
 		inc a
 		jr nz,DSP1
 		push hl
-		ex de,hl
-		ld b,19
-DSP2		ld (hl),#20
+		call DiagPrint
+		pop hl
+DSP1		ld a,(CondDelim)
+		ld b,0
+		ret
+;ERROR "text"
+_error		push af
+		ld a,(CondActive)
+		or a
+		jr nz,ERR0
+		pop af
+		call CondSkipExpr
+		ld b,0
+		ret
+ERR0		pop af
+		ld de,DataBuf
+		call OutputSpec
+		ld (CondDelim),a
+		push hl
+		call DiagPrint
+		pop hl
+		ld b,UserError+#80
+		jp SkipStrC
+;ASSERT expr[, "text"]
+_assert		ld c,a
+		xor a
+		ld (CondPage2),a
+		push hl
+		ld a,c
+		call AssertHasEqual
+		pop hl
+		ld a,(Pass)
+		inc a
+		jr z,ASRT1
+		ld a,c
+		call GetVar
+		ld (CondDelim),a
+		call AssertMsg
+		jr DSP1
+ASRT1		ld a,c
+		call GetVar2
+		ld (CondDelim),a
+		ld a,d
+		or e
+		ld (CondValue),a
+		ld a,(CondDelim)
+		call AssertMsg
+		ld (CondDelim),a
+		ld a,(CondValue)
+		or a
+		jr nz,DSP1
+		ld a,(CondPage2)
+		or a
+		jr nz,DSP1
+		ld a,(CondPage3)
+		or a
+		jr z,ASRT2
+		push hl
+		call DiagPrint
+		pop hl
+ASRT2		ld b,AssertionEr
+		jp SkipStrC
+AssertMsg	xor a
+		ld (CondPage3),a
+		ld a,(CondDelim)
+		cp #20
+		call z,SkipSpace
+		cp #09
+		call z,SkipSpace
+		cp ","
+		jr z,ASMSG1
+		jp CondEndOnly
+ASMSG1		ld a,(hl)
+		ld de,DataBuf
+		call OutputSpec
+		ld (CondDelim),a
+		ld a,#ff
+		ld (CondPage3),a
+		ld a,(CondDelim)
+		ret
+AssertHasEqual	cp #20
+		call z,SkipSpace
+		cp #09
+		call z,SkipSpace
+AHE1		cp #0d
+		ret z
+		cp ","
+		ret z
+		cp ":"
+		ret z
+		cp ";"
+		ret z
+		cp "="
+		jr z,AHE3
+		cp "'"
+		jr z,AHE2
+		cp '"'
+		jr z,AHE2
+		ld a,(hl)
 		inc hl
-		djnz DSP2
+		jr AHE1
+AHE2		ld b,a
+AHE2A		ld a,(hl)
+		inc hl
+		cp #0d
+		ret z
+		cp b
+		jr nz,AHE2A
+		ld a,(hl)
+		inc hl
+		jr AHE1
+AHE3		ld a,#ff
+		ld (CondPage2),a
+		ret
+DiagPrint	ex de,hl
+		ld b,19
+DP1		ld (hl),#20
+		inc hl
+		djnz DP1
 		ld (hl),#0a
 		inc hl
 		ld (hl),#0d
@@ -195,11 +309,7 @@ DSP2		ld (hl),#20
 		ld (hl),0
 		ld hl,DataBuf
 		ld c,PChars
-		call DSS
-		pop hl
-DSP1		ld a,(CondDelim)
-		ld b,0
-		ret
+		jp DSS
 DupEndLine	cp #20
 		call z,SkipSpace
 		cp #09

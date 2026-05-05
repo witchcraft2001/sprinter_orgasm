@@ -104,11 +104,12 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 
 - [x] Evaluate `OUTPUT`/`OUTEND` support or map it to the new output-range mechanism.
 - [x] Add `DISPLAY "text"` as a useful assembly-time diagnostic directive.
-- [ ] Add remaining useful diagnostics directives if needed: `ASSERT`, `ERROR`, and `WARNING`.
+- [x] Add remaining useful diagnostics directives if needed: `ASSERT`, `ERROR`, and `WARNING`.
 - [ ] Decide whether `ALIGN` is needed separately from `BLOCK`.
 - [ ] Define a deliberate boundary for unsupported sjasmplus features, especially `LUA`, `ENDLUA`, and `INCLUDELUA`.
 - [ ] Consider macro support only after the previous stages are stable.
-- [ ] Add ASM examples for every newly supported extended sjasmplus directive.
+- [ ] Revisit low-memory workspace pressure before adding more parser features; diagnostics required reducing `MaxLoadFile` from 64 to 32 to keep `ComBuffer` safely below `#8000`.
+- [x] Add ASM examples for every newly supported extended sjasmplus directive.
 - [ ] Document the supported sjasmplus subset and explicitly unsupported features in `docs/` in Russian and English.
 
 ## Verification Checklist
