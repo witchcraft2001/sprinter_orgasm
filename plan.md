@@ -2,6 +2,10 @@
 
 This file tracks the staged work needed to add practical sjasmplus source compatibility to OrgAsm. Mark items as complete as they are implemented and verified.
 
+## Priority 1: Correct `$` in Expressions
+
+- [ ] Fix OrgAsm expression handling for the current program counter `$`, especially in relative branches such as `jr $+3`, `jr z,$+5`, and `jr $-4`. This must be fixed in the calculator/PC accounting instead of masking self-hosting failures by rewriting sources to labels. Add regression examples that prove `$+N`/`$-N` are calculated relative to the instruction address expected by Z80 relative jump encoding, and then restore or allow the original shorthand forms in OrgAsm sources.
+
 ## Stage 1: Documentation Baseline
 
 - [x] Create `docs/ru/` and `docs/en/` for the full OrgAsm manual.

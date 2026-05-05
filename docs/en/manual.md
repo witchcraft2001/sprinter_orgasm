@@ -32,7 +32,7 @@ file.asm:12: Syntax error
     source line
 ```
 
-The `.ERR` file is created only after the first error. OrgAsm exits through DSS `EXIT #41` with return code `0` in `B` after a successful build and `1` when compiler or DSS errors stop output generation.
+The `.ERR` file is created only after the first error. OrgAsm exits through DSS `EXIT #41` with return code `0` in `B` after a successful build and `1` when compiler or DSS errors stop output generation. Fatal DSS errors are printed in compact form as `DSS error: #NN`, where `NN` is the hexadecimal DSS code.
 
 During compilation OrgAsm polls the keyboard between source lines and during long file load/save operations. Press `Ctrl+C` to cancel the current build; OrgAsm prints a cancellation message, closes open files, frees allocated memory, and exits with return code `1`.
 
@@ -297,6 +297,8 @@ Examples are stored in `examples/`:
 - `ERRORS` - intentionally invalid example for checking `/L` and active `ERROR`.
 
 Each example directory contains a Sprinter make `makefile` and a `build.bat` file for users without make.
+
+`ORGSELF.ASM` in the source tree is the target-side self-host wrapper: it includes `ORGASM.ASM` and saves the unpacked core as `CORE.BIN` from `#4100`. The complete packed `ORGASM.EXE` is produced by the repository `make` flow.
 
 ## Distribution
 

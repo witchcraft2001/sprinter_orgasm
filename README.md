@@ -56,6 +56,10 @@ This uses the same loader, but the payload is the raw `core.bin`. At
 runtime the loader allocates and maps win1, reads that payload directly to
 `#4100`, and jumps to it.
 
+`ORGSELF.ASM` is the target-side self-host wrapper. It includes
+`ORGASM.ASM` and writes the unpacked core as `CORE.BIN` from `#4100`; the
+complete packed `ORGASM.EXE` is still produced by the repository `make` flow.
+
 ```sh
 make dist
 ```
@@ -92,7 +96,7 @@ Important symbols:
 
 ```text
 Start       #4100
-ComBuffer   near #7F00
+ComBuffer   near #7D00
 TabLabel    #8000
 ```
 

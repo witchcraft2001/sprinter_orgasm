@@ -1,5 +1,6 @@
-; OrgAsm self-host wrapper. Use sjasmplus with Makefile for host builds.
+; OrgAsm self-host wrapper. It builds the unpacked core image.
 
         include "orgasm.asm"
 
-        savebin "ORGASM.EXE",#4000,$-#4000
+CoreEnd:
+        savebin "CORE.BIN",#4100,CoreEnd-#4100

@@ -473,18 +473,29 @@ AsmNoDupPending
 AsmNoDupJump
                 push af
                 push hl
+                ld b,0
+                ld d,b
+                ld e,b
                 ld c,ScanKey
                 rst #10         ;сканирование клавиатуры
-                jr z,AsmF7
                 ld a,e
                 cp #03
                 jr z,AsmAbortKey
-                ld a,b
-                and CtrlKeyMask
-                jr z,AsmPauseKey
+                or a
+                jr nz,AsmCheckCtrlMod
                 ld a,d
                 cp ScanCKey
                 jr z,AsmAbortKey
+AsmCheckCtrlMod
+                ld a,b
+                and CtrlKeyMask
+                jr z,AsmCheckAnyKey
+                ld a,d
+                cp ScanCKey
+                jr z,AsmAbortKey
+AsmCheckAnyKey  ld a,e
+                or d
+                jr z,AsmF7
 AsmPauseKey
                 ld c,Cursor
                 rst #10         ;положение курсора на экране
@@ -495,12 +506,29 @@ AsmPauseKey
                 ld hl,PrPause
                 ld c,PChars
                 rst #10         ;печать сообщения о паузе
+                ld b,0
+                ld d,b
+                ld e,b
                 ld c,WaitKey
                 rst #10         ;ожидание нажатия клавиши
+                ld a,e
                 cp #1b          ;нажата <Esc>?
                 jp z,ExitDSS    ;принудительное завершение работы
                 cp #03          ;нажато <Ctrl+C>?
                 jr z,AsmAbortPauseKey
+                or a
+                jr nz,AsmPauseCheckCtrlMod
+                ld a,d
+                cp ScanCKey
+                jr z,AsmAbortPauseKey
+AsmPauseCheckCtrlMod
+                ld a,b
+                and CtrlKeyMask
+                jr z,AsmContinueKey
+                ld a,d
+                cp ScanCKey
+                jr z,AsmAbortPauseKey
+AsmContinueKey
                 pop de
                 ld c,Locate
                 rst #10         ;текущие координаты
@@ -650,7 +678,7 @@ AsmF3           ld c,Cursor
                 ld e,30
                 ld c,Locate
                 rst #10         ;установка координат
-                ld hl,c0
+                ld hl,OkText
                 ld c,PChars
                 rst #10         ;печать сообщения о успешном завершении
                 ld a,(Pass)
@@ -1723,12 +1751,20 @@ CheckUserAbort  push af
                 push bc
                 push de
                 push hl
+                ld b,0
+                ld d,b
+                ld e,b
                 ld c,ScanKey
                 rst #10
-                jr z,CUA1
                 ld a,e
                 cp #03
                 jr z,CUA2
+                or a
+                jr nz,CUA3
+                ld a,d
+                cp ScanCKey
+                jr z,CUA2
+CUA3
                 ld a,b
                 and CtrlKeyMask
                 jr z,CUA1
@@ -1893,22 +1929,29 @@ Error
                 jr c,Error0     ;код ошибки < 20h ?
                 ld a,#20
 Error0
-                add a,a
-                ld hl,ErrorTabl
-                ld d,0
-                ld e,a
-                add hl,de
-                ld a,(hl)
-                inc hl
-                ld h,(hl)
-                ld l,a
+                ld hl,DssErrorCode
+                push af
+                rrca
+                rrca
+                rrca
+                rrca
+                call ErrorHexDigit
+                pop af
+                call ErrorHexDigit
+                ld hl,DssError
 
                 ld c,PChars     ;вывод сообщения об ошибке
                 rst #10
-                ld hl,CRLF
-                ld c,PChars
-                rst #10
                 jp ExitDSS
+
+ErrorHexDigit   and #0f
+                add a,#30
+                cp #3a
+                jr c,ErrorHexDigit1
+                add a,7
+ErrorHexDigit1  ld (hl),a
+                inc hl
+                ret
 
 ;                include scanstr
 ;                include scancmnd
@@ -1958,46 +2001,9 @@ PrPause         db "Pause...  <Esc> to Exit or <AnyKey> to Continue",0
 AbortMsg        db 13,10,"Compilation cancelled by Ctrl+C",13,10,0
 PrTimeComp      db 13,10,"Compile time - 00:00",13,10,10,0
 CRLF            db 10,13,0
-;
-;------ Коды ошибок DOS ------
-;
-c0              db "O'Key!",13,10,0
-c1              db "Invalid function",0
-c2              db "Invalid drive number",0
-c3              db "File not found",0
-c4              db "Path not found",0
-c5              db "Invalid handle",0
-c6              db "Too many open files",0
-c7              db "File exist",0
-c8              db "File read only",0
-c9              db "Root overflow",0
-ca              db "No free space",0
-cb              db "Directory not empty",0
-cc              db "Attempt to remove current directory",0
-cd              db "Invalid media",0
-ce              db "Invalid operation",0
-cf              db "Directory exist",0
-c10             db "Invalid filename",0
-c11             db "Invalid EXE-file",0
-c12             db "Not supported EXE-file",0
-c13             db "Permission denied",0
-c14             db "Not ready",0
-c15             db "Seek error",0
-c16             db "Sector not found",0
-c17             db "CRC error",0
-c18             db "Write protect",0
-c19             db "Read error",0
-c1a             db "Write error",0
-c1b             db "Drive failure",0
-c1c             db "Unknown error : 28",0
-c1d             db "Unknown error : 29",0
-c1e             db "No free memory",0
-c1f             db "Invalid memory block",0
-c20             db "Unknown error : 32...",0
-;---таблица с адресами кодов ошибок---
-ErrorTabl       dw c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,ca,cb,cc,cd,ce,cf
-                dw c10,c11,c12,c13,c14,c15,c16,c17,c18,c19,c1a,c1b
-                dw c1c,c1d,c1e,c1f,c20
+OkText          db "O'Key!",13,10,0
+DssError        db "DSS error: #"
+DssErrorCode    db "00",13,10,0
 
 OpenFile        db 0            ;признак откр.файла (<>0 - есть откр.файл)
 ;OpenMem         db 0            ;кол-во занятых блоков памяти
