@@ -26,7 +26,13 @@ The build first creates the raw OrgAsm core:
 
 ```text
 out/core.bin
+out/overlay.bin
 ```
+
+`orgasm.asm` and `overlay.asm` are assembled as one sjasmplus project with
+`ORGASM_HOST_BUILD` and `ORGASM_WITH_OVERLAY` defined. This keeps overlay
+labels resolved normally and avoids a fixed jump table at the start of the
+overlay block.
 
 Then `tools/mhmt -hst -zxh` compresses it to:
 
@@ -37,10 +43,11 @@ out/core.hst
 Finally `orgload.asm` builds the Sprinter EXE. The loader uses the minimal
 22-byte DSS EXE v1 header, loads its primary image at `#8200`, and enters the
 loader code at `#8280` after a 128-byte PSP guard. At runtime it prints the
-startup/help text, allocates and maps one page into win1, copies the DSS command
-line to `#4000`, zero-terminates it for the historical parser, reads the packed
-payload to `#8600` in the loader page, unpacks the core to `#4100`, and jumps to
-it.
+startup/help text, allocates and maps one page into win1, allocates a separate
+overlay page for cold OrgAsm routines, copies the DSS command line to `#4000`,
+zero-terminates it for the historical parser, reads the packed payload to
+`#8600` in the loader page, reads the overlay through win3, unpacks the core to
+`#4100`, passes the overlay block ID in `A`, and jumps to the core.
 
 ```sh
 make unpacked
@@ -53,8 +60,9 @@ out/orgunpk.exe
 ```
 
 This uses the same loader, but the payload is the raw `core.bin`. At
-runtime the loader allocates and maps win1, reads that payload directly to
-`#4100`, and jumps to it.
+runtime the loader allocates and maps win1, allocates the overlay page, reads
+the raw core directly to `#4100`, reads the overlay through win3, passes the
+overlay block ID in `A`, and jumps to the core.
 
 `ORGSELF.ASM` is the target-side self-host wrapper. It includes
 `ORGASM.ASM` and writes the unpacked core as `CORE.BIN` from `#4100`; the
@@ -80,16 +88,18 @@ The resident OrgAsm core starts at `#4100` in win1. The loader passes the
 command line through `#4000`. DSS stores the command tail as a length-prefixed
 PSP field and the current DSS `Execute.ASM` code uses a hard-coded `#80` byte
 command-line limit, so `#4000..#40FF` is a conservative command-line area.
-This keeps the EXE header, startup/help text, and 128-byte legacy EXE padding
-out of the resident core and allows `MaxLoadFile` to stay at 64. The win1 page
-is allocated via
-`Dss.GetMem`; DSS releases pages owned by the task during `Dss.Exit`.
+This keeps the EXE header, startup/help text, 128-byte legacy EXE padding, and
+cold fatal-error/memory-service routines out of the resident core and allows
+`MaxLoadFile` to stay at 64. The win1 and overlay pages are allocated via
+`Dss.GetMem`; DSS releases pages owned by the task during `Dss.Exit`. The
+overlay is assembled for `#8000` and is temporarily mapped into win2 only while
+its cold routines run.
 
 Current core layout should be checked with a symbol build when memory-sensitive
 changes are made:
 
 ```sh
-sjasmplus --sym=/tmp/orgasm.sym --raw=/tmp/core.bin orgasm.asm
+sjasmplus -DORGASM_HOST_BUILD -DORGASM_WITH_OVERLAY --sym=/tmp/orgasm.sym orgasm.asm
 ```
 
 Important symbols:

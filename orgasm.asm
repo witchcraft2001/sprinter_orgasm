@@ -17,8 +17,13 @@
 ;Deb             equ 1           ;1 - асемблить отладочный код
                                 ;0 - не асемблить
 
+                ifdef ORGASM_HOST_BUILD
+                device zxspectrum128
+                endif
+
 Start           equ #4100
 CoreCommandLine equ #4000
+OverlayBase     equ #8000
                 org Start
 
 ;
@@ -73,6 +78,7 @@ Page2           equ #c2
 Page3           equ #e2
 
 Main
+                ld (OverlayID),a
                 ld c,SysTime
                 rst #10         ;время начала компиляции
                 ld (TimeComp+1),hl
@@ -388,10 +394,14 @@ ComStr9         ld hl,(RepFAdr) ;создаем имя файла-репорта
                 ld c,PChars
                 rst #10         ;печать сообщения о загрузке
                 ld hl,ComBuffer
+                ld de,MainFileName
+                ld bc,128
+                ldir
+                ld hl,MainFileName
                 ld (FileNameAdr),hl
                 ld a,#ff
                 ld (FileNamePage),a
-                ld hl,ComBuffer
+                ld hl,MainFileName
                 call LoadFile   ;загрузка исходника в память
 ;
 ;Основной цикл компиляции исходника
@@ -473,29 +483,11 @@ AsmNoDupPending
 AsmNoDupJump
                 push af
                 push hl
-                ld b,0
-                ld d,b
-                ld e,b
                 ld c,ScanKey
                 rst #10         ;сканирование клавиатуры
-                ld a,e
-                cp #03
-                jr z,AsmAbortKey
-                or a
-                jr nz,AsmCheckCtrlMod
-                ld a,d
-                cp ScanCKey
-                jr z,AsmAbortKey
-AsmCheckCtrlMod
-                ld a,b
-                and CtrlKeyMask
-                jr z,AsmCheckAnyKey
-                ld a,d
-                cp ScanCKey
-                jr z,AsmAbortKey
-AsmCheckAnyKey  ld a,e
-                or d
                 jr z,AsmF7
+                call IsCtrlCKey
+                jr c,AsmAbortKey
 AsmPauseKey
                 ld c,Cursor
                 rst #10         ;положение курсора на экране
@@ -514,20 +506,8 @@ AsmPauseKey
                 ld a,e
                 cp #1b          ;нажата <Esc>?
                 jp z,ExitDSS    ;принудительное завершение работы
-                cp #03          ;нажато <Ctrl+C>?
-                jr z,AsmAbortPauseKey
-                or a
-                jr nz,AsmPauseCheckCtrlMod
-                ld a,d
-                cp ScanCKey
-                jr z,AsmAbortPauseKey
-AsmPauseCheckCtrlMod
-                ld a,b
-                and CtrlKeyMask
-                jr z,AsmContinueKey
-                ld a,d
-                cp ScanCKey
-                jr z,AsmAbortPauseKey
+                call IsCtrlCKey
+                jr c,AsmAbortPauseKey
 AsmContinueKey
                 pop de
                 ld c,Locate
@@ -587,30 +567,24 @@ AsmF1           ld a,(CurrentFile)
                 ld c,PChars
                 rst #10         ;печать сообщения о возврате к файлу-родителю
                 pop hl
-                ld de,#0008
+                ld de,#0009
                 add hl,de
-                ld a,(hl)       ;файл-родитель
-                inc a
-                jr z,AsmF6
-                dec a
-                call GoSpec     ;родитель файла-родителя
-                inc hl
-                inc hl
-                inc hl
-                ld a,(hl)       ;лог.номер банки с исходником
-                call SetBankAsm
+                ld a,(hl)       ;банк строки с именем файла или #ff
                 inc hl
                 ld e,(hl)
                 inc hl
                 ld d,(hl)
-                ex de,hl        ;в hl - адрес строки со специф. файла
-                ld de,DataBuf
+                cp #ff
+                jr z,AsmF6
                 push de
-                ld a,#20        ;код пробела
-                call SpecFile   ;имя файла в буфер
+                call SetBankAsm
                 pop hl
-                jr $+5
-AsmF6           ld hl,ComBuffer
+                ld de,DataBuf
+                call ErrCopySpecName
+                ld hl,DataBuf
+                jr AsmF6a
+AsmF6           ex de,hl
+AsmF6a
                 call PrString   ;печать имени файла
 
                 pop hl
@@ -1658,31 +1632,43 @@ ExtMemLF1       inc b
 
 ;Вывод на экран строки с информацией о свободной памяти
 ;
-MemInfoFree     ld c,InfoMem    ;информация о памяти
-                rst #10
-
-                ld h,b
-                ld l,c
-                ld de,VarFMem
-                call CalcMem
-
-                ld hl,FreeMem1
-                ld c,PChars
-                rst #10         ;печать сообщения
-                ret
+MemInfoFree     ld hl,OverlayMemInfoFree
+                jp CallOverlay
 ;
 ;Выводит на экран строку с информацией об общей памяти
 ;
-MemInfoTotal    ld c,InfoMem    ;информация о памяти
-                rst #10
+MemInfoTotal    ld hl,OverlayMemInfoTotal
+                jp CallOverlay
 
-                ld de,VarTMem
-                call CalcMem
+CallOverlay     in a,(Page2)
+                push af
+                call MapOverlay
+                ld de,OverlayReturn
+                push de
+                jp (hl)
 
-                ld hl,TotalMem
-                ld c,PChars
-                rst #10         ;печать сообщения
+OverlayReturn   pop af
+                out (Page2),a
                 ret
+
+JumpOverlay     push af
+                call MapOverlay
+                pop af
+                jp (hl)
+
+MapOverlay      push hl
+                ld a,(OverlayID)
+                ld b,0
+                ld c,SetWin2
+                rst #10
+                jr c,OverlayMapError
+                pop hl
+                ret
+
+OverlayMapError pop hl
+                ld b,1
+                ld c,Exit
+                rst #10
 ;
 ;Производит перевод кол-ва банок в кБ с преобразованием в строку символов
 ;
@@ -1747,30 +1733,29 @@ H2D1            cp (hl)
                 djnz H2D1
                 ret
 
+IsCtrlCKey      ld a,e
+                cp #03
+                scf
+                ret z
+                ld a,b
+                and CtrlKeyMask
+                jr z,IsCtrlCKey1
+                ld a,d
+                cp ScanCKey
+                scf
+                ret z
+IsCtrlCKey1     or a
+                ret
+
 CheckUserAbort  push af
                 push bc
                 push de
                 push hl
-                ld b,0
-                ld d,b
-                ld e,b
                 ld c,ScanKey
                 rst #10
-                ld a,e
-                cp #03
-                jr z,CUA2
-                or a
-                jr nz,CUA3
-                ld a,d
-                cp ScanCKey
-                jr z,CUA2
-CUA3
-                ld a,b
-                and CtrlKeyMask
                 jr z,CUA1
-                ld a,d
-                cp ScanCKey
-                jr z,CUA2
+                call IsCtrlCKey
+                jr c,CUA2
 CUA1            pop hl
                 pop de
                 pop bc
@@ -1861,58 +1846,13 @@ DSS;             ld (StackPr),sp ;запоминаем текущий стек �
 ;
 ;Выход в DSS с освобождением занятой памяти и закрытием файла
 ;
-ExitDSS
-;                ld a,(PageW2)
-;                out (#c2),a
-;                ld sp,#bfff
-                call CloseErrLog
-                ld a,(OpenFile) ;проверка, есть ли не закрытый файл
-                or a
-                jr z,EDSS1
-
-                ld a,(OpenFile) ;закрываем открытый файл
-                ld c,Close
-                rst #10
-
-EDSS1
-                ld hl,InFileID
-                ld b,4
-FrMem2          ld c,(hl)
-                inc hl
-                ld a,(hl)
-                inc hl
-                or a
-                jr z,FrMem1
-                push hl
-                push bc
-                ld a,c
-                ld c,FreeMem
-                rst #10         ;освобождение блока памяти
-                jp c,Error
-
-                pop bc
-                pop hl
-FrMem1          djnz FrMem2
-
-                ld hl,(ErrorPass)
-                ld a,h
-                or l
-                ld b,0
-                jr z,EDSS3
-                inc b
-EDSS3           ld c,Exit       ;выход из программы
-                rst #10
-                ret
+ExitDSS         ld hl,OverlayExitDSS
+                jp JumpOverlay
 ;
 ;Выход из программы с ошибкой
 ;
-ErrorDSS1
-                ld hl,1
-                ld (ErrorPass),hl
-                ld hl,ErrorPort
-                ld c,PChars
-                rst #10
-                jp ExitDSS
+ErrorDSS1       ld hl,OverlayErrorDSS1
+                jp JumpOverlay
 ErrorDSS
 ;                push af
 ;                ld a,(PageW2)
@@ -1920,38 +1860,8 @@ ErrorDSS
 ;                pop af
 ;                ld sp,#bfff     ;установили стек
 ;
-Error
-                push af
-                ld hl,1
-                ld (ErrorPass),hl
-                pop af
-                cp #21
-                jr c,Error0     ;код ошибки < 20h ?
-                ld a,#20
-Error0
-                ld hl,DssErrorCode
-                push af
-                rrca
-                rrca
-                rrca
-                rrca
-                call ErrorHexDigit
-                pop af
-                call ErrorHexDigit
-                ld hl,DssError
-
-                ld c,PChars     ;вывод сообщения об ошибке
-                rst #10
-                jp ExitDSS
-
-ErrorHexDigit   and #0f
-                add a,#30
-                cp #3a
-                jr c,ErrorHexDigit1
-                add a,7
-ErrorHexDigit1  ld (hl),a
-                inc hl
-                ret
+Error           ld hl,OverlayError
+                jp JumpOverlay
 
 ;                include scanstr
 ;                include scancmnd
@@ -2002,8 +1912,6 @@ AbortMsg        db 13,10,"Compilation cancelled by Ctrl+C",13,10,0
 PrTimeComp      db 13,10,"Compile time - 00:00",13,10,10,0
 CRLF            db 10,13,0
 OkText          db "O'Key!",13,10,0
-DssError        db "DSS error: #"
-DssErrorCode    db "00",13,10,0
 
 OpenFile        db 0            ;признак откр.файла (<>0 - есть откр.файл)
 ;OpenMem         db 0            ;кол-во занятых блоков памяти
@@ -2025,7 +1933,9 @@ ErrOpenFile     db 0            ;манипулятор файла ошибок
 ErrNameFlag     db 0            ;#ff - имя файла ошибок задано явно
 ErrNameExt      db 0            ;#ff - в имени файла ошибок есть расширение
 ErrMsgPtr       dw 0            ;адрес текста последней ошибки
+OverlayID       db 0            ;id блока с overlay-кодом в win2
 ErrNameBuf      ds 128          ;явное имя файла ошибок
+MainFileName    ds 128          ;стабильная копия имени главного исходника
 NoOutFlag       db 0            ;#ff - не создавать неявный выходной файл
 FileNamePage    db 0            ;банк строки с именем загружаемого файла
 FileNameAdr     dw 0            ;адрес строки с именем загружаемого файла
@@ -2094,6 +2004,10 @@ MaxCond         equ 16
 CondParent      ds MaxCond      ;активность родительского блока
 CondSeen        ds MaxCond      ;истинная ветка текущего IF уже была
 CondAct         ds MaxCond      ;активность текущего уровня
+CoreEnd
+                ifdef ORGASM_HOST_BUILD
+                savebin "out/core.bin",Start,CoreEnd-Start
+                endif
 ;FileID          equ $           ;id открытого файла (1)
 ;MemID           equ FileID+1    ;адрес таблицы выделенной памяти (2)
 ;MemID           equ $           ;адрес таблицы выделенной памяти (2)
@@ -2138,5 +2052,10 @@ ComBuffer       equ StackNum+96 ;начало буфера параметров 
 ; 2 блок - объектный код
 ; 3 блок - исходный листинг
 ; 4 блок - репорт о процессе компиляции (?)
+
+                ifdef ORGASM_WITH_OVERLAY
+                org OverlayBase
+                include "overlay.asm"
+                endif
 
 ;                END

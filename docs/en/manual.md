@@ -32,7 +32,7 @@ file.asm:12: Syntax error
     source line
 ```
 
-The `.ERR` file is created only after the first error. OrgAsm exits through DSS `EXIT #41` with return code `0` in `B` after a successful build and `1` when compiler or DSS errors stop output generation. Fatal DSS errors are printed in compact form as `DSS error: #NN`, where `NN` is the hexadecimal DSS code.
+The `.ERR` file is created only after the first error. OrgAsm exits through DSS `EXIT #41` with return code `0` in `B` after a successful build and `1` when compiler or DSS errors stop output generation. Fatal DSS errors are printed as DSS text messages such as `Invalid filename` or `No free memory`.
 
 During compilation OrgAsm polls the keyboard between source lines and during long file load/save operations. Press `Ctrl+C` to cancel the current build; OrgAsm prints a cancellation message, closes open files, frees allocated memory, and exits with return code `1`.
 

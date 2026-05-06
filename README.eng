@@ -37,8 +37,8 @@ specific file. Log records use the compact format:
 
 Errors from the main source and INCLUDE files are written to the same log.
 OrgAsm returns DSS exit code 0 on successful builds and 1 when compiler or
-DSS errors stop output generation. Fatal DSS errors are printed as
-`DSS error: #NN`, where `NN` is the hexadecimal DSS code.
+DSS errors stop output generation. Fatal DSS errors are printed as DSS text
+messages such as `Invalid filename` or `No free memory`.
 
 The /N option disables the implicit command-line output file. Use it for
 sources where all output files are produced by SAVE, SAVEBIN, or OUTPUT

@@ -4,11 +4,13 @@ OUT_DIR := out
 DIST_DIR := distr
 TARGET := $(OUT_DIR)/orgasm.exe
 CORE := $(OUT_DIR)/core.bin
+OVERLAY := $(OUT_DIR)/overlay.bin
 PACKED_CORE := $(OUT_DIR)/core.hst
 UNPACKED_TARGET := $(OUT_DIR)/orgunpk.exe
 IMAGE := $(DIST_DIR)/orgasm.img
 ZIP := $(DIST_DIR)/orgasm.zip
 SRC := orgasm.asm
+OVERLAY_SRC := overlay.asm
 LOADER_SRC := orgload.asm
 MHMT := tools/mhmt
 DEPS := \
@@ -26,16 +28,18 @@ DEPS := \
 
 all: $(TARGET)
 
-$(CORE): $(SRC) $(DEPS) | $(OUT_DIR)
-	$(SJASMPLUS) --raw=$@ $(SRC)
+$(CORE): $(SRC) $(OVERLAY_SRC) $(DEPS) | $(OUT_DIR)
+	$(SJASMPLUS) -DORGASM_HOST_BUILD -DORGASM_WITH_OVERLAY $(SRC)
+
+$(OVERLAY): $(CORE)
 
 $(PACKED_CORE): $(CORE) $(MHMT) | $(OUT_DIR)
 	$(MHMT) -hst -zxh $(CORE) $(PACKED_CORE)
 
-$(TARGET): $(LOADER_SRC) depack.asm $(PACKED_CORE) | $(OUT_DIR)
+$(TARGET): $(LOADER_SRC) depack.asm $(PACKED_CORE) $(OVERLAY) | $(OUT_DIR)
 	$(SJASMPLUS) --raw=$@ $(LOADER_SRC)
 
-$(UNPACKED_TARGET): $(LOADER_SRC) $(CORE) | $(OUT_DIR)
+$(UNPACKED_TARGET): $(LOADER_SRC) $(CORE) $(OVERLAY) | $(OUT_DIR)
 	$(SJASMPLUS) -DORGASM_UNPACKED --raw=$@ $(LOADER_SRC)
 
 unpacked: $(UNPACKED_TARGET)

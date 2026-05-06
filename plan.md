@@ -2,7 +2,15 @@
 
 This file tracks the staged work needed to add practical sjasmplus source compatibility to OrgAsm. Mark items as complete as they are implemented and verified.
 
-## Priority 1: Correct `$` in Expressions
+## Priority 1: Resident Memory Relief
+
+- [x] Move fatal DSS error handling (`Error`, `ErrorDSS`, `ErrorDSS1`) out of resident win1 into the win2 overlay page.
+- [x] Move startup/exit memory service code (`MemInfoTotal`, `MemInfoFree`, `FrMem*`) out of resident win1 into the win2 overlay page.
+- [x] Split win2 overlay implementation into `overlay.asm` and resolve overlay entry labels directly from the shared project assembly, without a fixed `jp` table at `OverlayStart`.
+- [ ] Move remaining text resources that can be addressed outside hot parser paths.
+- [ ] Analyze risks for moving final output code (`SaveOutF`, `CreateSub`, `SaveDirectiveFiles`, `SaveRangeFile`, `ClampSaveLen`), `/L` error-log code (`OpenErrLog`, `WriteErrLog`, `CloseErrLog`, `MakeDefaultErrName`, `ErrGetFileName`), include path helpers (`SaveCurPath`, `RestoreCurPath`, `CurSpec`), selected `LoadFile` parts, and UI/formatting helpers (`Hex2Dec`, `TimeCalc`, progress/time printing).
+
+## Priority 2: Correct `$` in Expressions
 
 - [ ] Fix OrgAsm expression handling for the current program counter `$`, especially in relative branches such as `jr $+3`, `jr z,$+5`, and `jr $-4`. This must be fixed in the calculator/PC accounting instead of masking self-hosting failures by rewriting sources to labels. Add regression examples that prove `$+N`/`$-N` are calculated relative to the instruction address expected by Z80 relative jump encoding, and then restore or allow the original shorthand forms in OrgAsm sources.
 

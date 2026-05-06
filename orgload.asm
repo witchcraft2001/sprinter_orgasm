@@ -2,9 +2,10 @@
 ;
 ; The loader keeps help/startup text out of the resident assembler body.
 ; Packed mode allocates win1 for the OrgAsm core, reads the appended Hrust
-; stream into win2, unpacks the core to #4100, copies the DSS command line to
-; #4000, and jumps there. Unpacked mode reads the appended raw core directly to
-; #4100 in the allocated win1 page and jumps there.
+; stream into win2, reads the win2 overlay through win3, unpacks the core to
+; #4100, copies the DSS command line to #4000, and jumps there. Unpacked mode
+; reads the appended raw core directly to #4100, reads the overlay through
+; win3, and jumps to the core.
 
 CoreStart       equ #4100
 CoreCommandLine equ #4000
@@ -19,6 +20,7 @@ Open            equ #11
 Close           equ #12
 Read_           equ #13
 SetWin1         equ #39
+SetWin3         equ #3b
 GetMem          equ #3d
 Exit            equ #41
 PChars          equ #5c
@@ -98,12 +100,31 @@ CopyCmdLine     ld a,(hl)
                 rst #10
                 jr c,LoaderError
 
+                ld b,1
+                ld c,GetMem
+                rst #10
+                jr c,LoaderError
+                ld (OverlayMemID),a
+
+                ld b,0
+                ld c,SetWin3
+                rst #10
+                jr c,LoaderError
+
+                ld hl,#c000
+                ld de,OverlayPayloadSize
+                ld a,(FileHandle)
+                ld c,Read_
+                rst #10
+                jr c,LoaderError
+
                 ld a,(FileHandle)
                 ld c,Close
                 rst #10
                 jr c,LoaderError
 
                 ifdef ORGASM_UNPACKED
+                ld a,(OverlayMemID)
                 jp CoreStart
                 else
                 ld hl,PayloadBuffer
@@ -111,6 +132,7 @@ CopyCmdLine     ld a,(hl)
                 call DePACK
                 endif
 
+                ld a,(OverlayMemID)
                 jp CoreStart
 
 LoaderError     ld hl,LoadError
@@ -126,6 +148,7 @@ DePACK          include "depack.asm"
 
 FileHandle      db 0
 LoaderIX        dw 0
+OverlayMemID    db 0
 
 Hello           db 13,10
                 db "OrgAsm v0.29",13,10,0
@@ -156,3 +179,8 @@ PayloadSize     equ PayloadEnd-PayloadStart
                 ifndef ORGASM_UNPACKED
                 assert PayloadSize <= #c000-PayloadBuffer
                 endif
+
+OverlayPayloadStart
+                incbin "out/overlay.bin"
+OverlayPayloadEnd
+OverlayPayloadSize equ OverlayPayloadEnd-OverlayPayloadStart
