@@ -12,9 +12,10 @@ AfterCondPlus   jr $-4
 BackwardLabel   nop
                 jr nz,ForwardLabel
                 nop
+                jr ForwardLabel+1
 ForwardLabel    ld b,2
 LoopLabel       djnz LoopLabel
-End
+RelEnd:
 
-                assert End-Start = 20,"RELJMP size"
-                savebin "RELJMP.BIN",Start,End-Start
+                assert RelEnd-Start = 22,"RELJMP size"
+                savebin "RELJMP.BIN",Start,RelEnd-Start

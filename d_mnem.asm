@@ -48,27 +48,55 @@ _djnz		inc h		;2-ой операнд <>0   - ошибка
 		ld a,#10	;код команды DJNZ
 		jr _jr2+1
 		   
-_jrdjnz		ld a,(Pass)	;диапазон JR/DJNZ проверяем только
+_jrdjnz		push de
+		ld a,(Pass)	;диапазон JR/DJNZ проверяем только
 		inc a		;на втором проходе, когда метки стабильны
 		jr z,_jrdjnz1
 		xor a
-		ret
+		jr _jrdjnzRet
 _jrdjnz1	ld a,(RelExprIndex)
 		cp 2
 		jr z,_jrdjnzOp2
 		ld a,(PCExpr1First)
-		cp "$"
-		jr nz,_jrdjnz2
 		ld hl,(PCExpr1Adr)
+		cp "$"
+		jr nz,_jrlabel
 		call _jrdollar
 		jr _jrdjnz3
 _jrdjnzOp2	ld a,(PCExpr2First)
-		cp "$"
-		jr nz,_jrdjnz2
 		ld hl,(PCExpr2Adr)
+		cp "$"
+		jr nz,_jrlabel
 		call _jrdollar
 		jr _jrdjnz3
-_jrdjnz2	ld hl,(Var1)	;значение переменной
+_jrlabel	ld a,(hl)
+		inc hl
+		call ScanLabel1
+		push af
+		push hl
+		call SearchLabel
+		jp m,_jrNoLabel
+		pop hl
+		pop af
+		ex de,hl
+		cp "+"
+		jr z,_jrlabelAdd
+		cp "-"
+		jr z,_jrlabelSub
+		jr _jrlabelPc
+_jrlabelAdd	push hl
+		ex de,hl
+		call _jrnum
+		pop hl
+		add hl,de
+		jr _jrlabelPc
+_jrlabelSub	push hl
+		ex de,hl
+		call _jrnum
+		pop hl
+		or a
+		sbc hl,de
+_jrlabelPc
 		ld bc,(PCAddres);текущее значение счетчика
 		inc bc
 		inc bc
@@ -81,17 +109,23 @@ _jrdjnz3
 		ld a,l
 		cp #80		;0...#7f
 		jr nc,JumpError
-		ret
+		jr _jrdjnzRet
 JumpDown	inc a
 		jr nz,JumpError
 		ld a,l
 		cp #80		;#80...#ff
-		ret nc
+		jr nc,_jrdjnzRet
 
 JumpError	exx
 		ld a,b		;следующий символ в строке
 		ld b,JumpEr	;"Слишком длинный относительный переход"
 		jp SkipStrC
+_jrNoLabel	pop hl
+		pop af
+		ld b,NoLabel
+		jp SkipStrC
+_jrdjnzRet	pop de
+		ret
 
 _jrdollar	inc hl
 		ld a,(hl)

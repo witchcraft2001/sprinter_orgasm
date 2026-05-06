@@ -17,7 +17,7 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 
 - [ ] Fix OrgAsm expression handling for `JR`/`DJNZ` operands, including both current-program-counter forms (`jr $+3`, `jr z,$+5`, `jr $-4`) and ordinary label expressions (`jr z,NumHex1`). The self-hosting failure shows the common relative-offset path is wrong, not only the `$` token. This must be fixed in the calculator/PC accounting and `_jrdjnz` range calculation instead of masking failures by rewriting sources to labels or absolute `JP`. Add regression examples that prove `$+N`/`$-N` and label targets are calculated relative to the Z80 displacement base (`PC+2`).
   - Added `examples/RELJMP` to exercise `$+N`, `$-N`, forward/backward label targets, `DJNZ`, and regular `$` expressions such as `ld ($+5),a`.
-  - `_jrdjnz` now performs range validation only on pass 2, after labels and PC accounting are stable. Label targets use the common calculated operand value (`Var1`), while `$+N`/`$-N` operands use a local decimal displacement parser keyed to an explicit relative-operand slot (`JR` uses operand 1, conditional `JR` uses operand 2, `DJNZ` uses operand 1), so ordinary `$` operands such as `ld ($+5),a` are not rewritten.
+  - `_jrdjnz` now performs range validation only on pass 2, after labels and PC accounting are stable. It reads the saved relative operand from the correct operand slot (`JR` uses operand 1, conditional `JR` uses operand 2, `DJNZ` uses operand 1); `$+N`/`$-N` use a local decimal displacement parser, while label operands support direct label targets and short decimal `Label+N`/`Label-N` offsets.
 
 ## Stage 1: Documentation Baseline
 
