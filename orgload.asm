@@ -130,6 +130,7 @@ CopyCmdLine     ld a,(hl)
                 ld hl,PayloadBuffer
                 ld de,CoreStart
                 call DePACK
+                ei
                 endif
 
                 ld a,(OverlayMemID)

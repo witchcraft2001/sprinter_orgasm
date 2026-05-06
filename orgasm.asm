@@ -486,7 +486,7 @@ AsmNoDupJump
                 ld c,ScanKey
                 rst #10         ;сканирование клавиатуры
                 jr z,AsmF7
-                call IsCtrlCKey
+                call IsCancelKey
                 jr c,AsmAbortKey
 AsmPauseKey
                 ld c,Cursor
@@ -506,7 +506,7 @@ AsmPauseKey
                 ld a,e
                 cp #1b          ;нажата <Esc>?
                 jp z,ExitDSS    ;принудительное завершение работы
-                call IsCtrlCKey
+                call IsCancelKey
                 jr c,AsmAbortPauseKey
 AsmContinueKey
                 pop de
@@ -1733,18 +1733,19 @@ H2D1            cp (hl)
                 djnz H2D1
                 ret
 
-IsCtrlCKey      ld a,e
-                cp #03
-                scf
-                ret z
+IsCancelKey     ld a,e
+                cp #1b
+                jr z,IsCancelKey2
                 ld a,b
                 and CtrlKeyMask
-                jr z,IsCtrlCKey1
+                jr z,IsCancelKey1
                 ld a,d
                 cp ScanCKey
                 scf
                 ret z
-IsCtrlCKey1     or a
+IsCancelKey1    or a
+                ret
+IsCancelKey2    scf
                 ret
 
 CheckUserAbort  push af
@@ -1754,7 +1755,7 @@ CheckUserAbort  push af
                 ld c,ScanKey
                 rst #10
                 jr z,CUA1
-                call IsCtrlCKey
+                call IsCancelKey
                 jr c,CUA2
 CUA1            pop hl
                 pop de

@@ -10,9 +10,9 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 - [ ] Move remaining text resources that can be addressed outside hot parser paths.
 - [ ] Analyze risks for moving final output code (`SaveOutF`, `CreateSub`, `SaveDirectiveFiles`, `SaveRangeFile`, `ClampSaveLen`), `/L` error-log code (`OpenErrLog`, `WriteErrLog`, `CloseErrLog`, `MakeDefaultErrName`, `ErrGetFileName`), include path helpers (`SaveCurPath`, `RestoreCurPath`, `CurSpec`), selected `LoadFile` parts, and UI/formatting helpers (`Hex2Dec`, `TimeCalc`, progress/time printing).
 
-## Priority 2: Correct `$` in Expressions
+## Priority 2: Correct Relative Branch Expressions
 
-- [ ] Fix OrgAsm expression handling for the current program counter `$`, especially in relative branches such as `jr $+3`, `jr z,$+5`, and `jr $-4`. This must be fixed in the calculator/PC accounting instead of masking self-hosting failures by rewriting sources to labels. Add regression examples that prove `$+N`/`$-N` are calculated relative to the instruction address expected by Z80 relative jump encoding, and then restore or allow the original shorthand forms in OrgAsm sources.
+- [ ] Fix OrgAsm expression handling for `JR`/`DJNZ` operands, including both current-program-counter forms (`jr $+3`, `jr z,$+5`, `jr $-4`) and ordinary label expressions (`jr z,NumHex1`). The self-hosting failure shows the common relative-offset path is wrong, not only the `$` token. This must be fixed in the calculator/PC accounting and `_jrdjnz` range calculation instead of masking failures by rewriting sources to labels or absolute `JP`. Add regression examples that prove `$+N`/`$-N` and label targets are calculated relative to the Z80 displacement base (`PC+2`).
 
 ## Stage 1: Documentation Baseline
 
