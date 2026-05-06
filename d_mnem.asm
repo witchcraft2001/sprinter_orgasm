@@ -9,10 +9,14 @@ _jr		inc h
 		jp nz,CmndError
 		inc l
 		jp nz,CmndError
+		ld a,1
+		ld (RelExprIndex),a
 		ld a,#18	;JR NN
 		jr _jr2+1
 
-_jr1		ld a,l
+_jr1		ld a,2
+		ld (RelExprIndex),a
+		ld a,l
 		ld hl,Tbl_jr
 		cp #03		;JR C,NN
 		jr z,_jr2
@@ -39,15 +43,38 @@ _djnz		inc h		;2-ой операнд <>0   - ошибка
 		jp nz,CmndError
 		inc l		;1-ый операнд - выражение?
 		jp nz,CmndError
+		ld a,1
+		ld (RelExprIndex),a
 		ld a,#10	;код команды DJNZ
 		jr _jr2+1
 		   
-_jrdjnz		ld hl,(Var1)	;значение переменной
+_jrdjnz		ld a,(Pass)	;диапазон JR/DJNZ проверяем только
+		inc a		;на втором проходе, когда метки стабильны
+		jr z,_jrdjnz1
+		xor a
+		ret
+_jrdjnz1	ld a,(RelExprIndex)
+		cp 2
+		jr z,_jrdjnzOp2
+		ld a,(PCExpr1First)
+		cp "$"
+		jr nz,_jrdjnz2
+		ld hl,(PCExpr1Adr)
+		call _jrdollar
+		jr _jrdjnz3
+_jrdjnzOp2	ld a,(PCExpr2First)
+		cp "$"
+		jr nz,_jrdjnz2
+		ld hl,(PCExpr2Adr)
+		call _jrdollar
+		jr _jrdjnz3
+_jrdjnz2	ld hl,(Var1)	;значение переменной
 		ld bc,(PCAddres);текущее значение счетчика
 		inc bc
 		inc bc
 		or a
 		sbc hl,bc
+_jrdjnz3
 		ld a,h
 		or a
 		jr nz,JumpDown	;отрицательное число?
@@ -65,6 +92,73 @@ JumpError	exx
 		ld a,b		;следующий символ в строке
 		ld b,JumpEr	;"Слишком длинный относительный переход"
 		jp SkipStrC
+
+_jrdollar	inc hl
+		ld a,(hl)
+		cp #20
+		jr z,_jrdollar0
+		cp #09
+		jr z,_jrdollar0
+		cp #0d
+		jr z,_jrdollar0
+		cp ":"
+		jr z,_jrdollar0
+		cp ";"
+		jr z,_jrdollar0
+		cp ","
+		jr z,_jrdollar0
+		ld c,0
+		cp "+"
+		jr z,_jrdollar2
+		dec c
+		cp "-"
+		jr z,_jrdollar2
+		dec hl
+		ld hl,(Var1)
+		ld de,(PCAddres)
+		or a
+		sbc hl,de
+		jr _jrdollar1
+_jrdollar2	inc hl
+		push bc
+		call _jrnum
+		ex de,hl
+		pop bc
+		ld a,c
+		or a
+		jr z,_jrdollar1
+		ld de,0
+		ex de,hl
+		or a
+		sbc hl,de
+		jr _jrdollar1
+_jrdollar0	ld hl,0
+_jrdollar1	ld de,-2
+		add hl,de
+		ret
+
+_jrnum		ld de,0
+_jrnum1	ld a,(hl)
+		call Numeric
+		ret nc
+		sub "0"
+		push hl
+		push af
+		ex de,hl
+		add hl,hl
+		ld d,h
+		ld e,l
+		add hl,hl
+		add hl,hl
+		add hl,de
+		pop af
+		ld e,a
+		ld d,0
+		add hl,de
+		ex de,hl
+		pop hl
+		inc hl
+		jr _jrnum1
 
 ;XOR ...
 _xor		ld c,#a8	;коррекция кода

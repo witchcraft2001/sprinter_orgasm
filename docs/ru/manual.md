@@ -293,6 +293,7 @@ Value:          byte #24
 - `SAVE` - `SAVE`/`SAVEBIN`, `/N`, `BYTE`, `WORD`, `BLOCK`;
 - `COND` - условная компиляция и пропуск неактивных веток;
 - `DIAG` - диагностические `DISPLAY`, `WARNING` и `ASSERT`;
+- `RELJMP` - относительные переходы `JR`/`DJNZ` и обычные выражения через `$+N`, `$-N` и метки;
 - `TASM` - TASM-совместимые `DISP`/`ENT`, `DD`/`DEFD`/`DWORD`, `DUP`/`EDUP`, `OUTPUT`/`OUTEND` и сгруппированные двоичные числа;
 - `ERRORS` - намеренно ошибочный пример для проверки `/L` и активного `ERROR`.
 

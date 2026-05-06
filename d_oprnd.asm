@@ -37,6 +37,13 @@ OperDetect	cp " "
 		ret z
 		cp ";"
 		ret z
+		push af
+		xor a
+		ld (PCExpr1First),a
+		ld (PCExpr2First),a
+		inc a
+		ld (PCExprIndex),a
+		pop af
 		call OD100	;определение первого операнда
 		ld a,b
 		ld (Operand1),a
@@ -63,6 +70,10 @@ OD101		ld a,(hl)
 		call z,SkipSpace
 		cp #09
 		call z,SkipSpace
+		push af
+		ld a,2
+		ld (PCExprIndex),a
+		pop af
 		call OD100
 		ld a,b
 		ld (Operand2),a
@@ -143,7 +154,22 @@ OD4		dec hl
 ;Вход: E - первый символ выражения
 ;      HL - адрес следующего символа
 ;
-ODVar		ld a,e
+ODVar		ld a,(PCExprIndex)
+		dec a
+		ld a,e
+		jr nz,ODVar2
+		ld (PCExpr1First),a
+		push hl
+		dec hl
+		ld (PCExpr1Adr),hl
+		pop hl
+		jr ODVar0
+ODVar2		ld (PCExpr2First),a
+		push hl
+		dec hl
+		ld (PCExpr2Adr),hl
+		pop hl
+ODVar0
 		ld b,#fe	;код выражения в скобках
 		cp "("
 		jr z,ODV1
@@ -503,4 +529,3 @@ ODS102		ld a,e
 		pop de
 		dec hl
 		ret
-

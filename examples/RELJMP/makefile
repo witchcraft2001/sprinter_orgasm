@@ -1,0 +1,15 @@
+ASM = ..\..\ORGASM.EXE
+SRC = MAIN.ASM
+OUT = RELJMP.BIN
+DELTOOL = MKDEL.EXE
+
+.PHONY: all clean
+
+all: $(OUT)
+
+$(OUT): $(SRC)
+	$(ASM) $(SRC) /N /L=RELJMP.ERR
+
+clean:
+	-$(DELTOOL) $(OUT)
+	-$(DELTOOL) RELJMP.ERR

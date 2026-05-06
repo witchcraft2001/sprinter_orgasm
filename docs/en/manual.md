@@ -293,6 +293,7 @@ Examples are stored in `examples/`:
 - `SAVE` - `SAVE`/`SAVEBIN`, `/N`, `BYTE`, `WORD`, `BLOCK`;
 - `COND` - conditional compilation and inactive branch skipping;
 - `DIAG` - diagnostic `DISPLAY`, `WARNING`, and `ASSERT`;
+- `RELJMP` - relative `JR`/`DJNZ` branches and regular expressions through `$+N`, `$-N`, and labels;
 - `TASM` - TASM-compatible `DISP`/`ENT`, `DD`/`DEFD`/`DWORD`, `DUP`/`EDUP`, `OUTPUT`/`OUTEND`, and grouped binary numbers;
 - `ERRORS` - intentionally invalid example for checking `/L` and active `ERROR`.
 
