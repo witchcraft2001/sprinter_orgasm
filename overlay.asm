@@ -4,16 +4,22 @@
 
 OverlayStart
 
+OverlayPrintString
+                ex de,hl
+                ld c,PChars
+                rst #10
+                ret
+
 OverlayMemInfoFree
                 ld c,InfoMem    ;информация о памяти
                 rst #10
 
                 ld h,b
                 ld l,c
-                ld de,VarFMem
+                ld de,OverlayVarFMem
                 call CalcMem
 
-                ld hl,FreeMem1
+                ld hl,OverlayFreeMem
                 ld c,PChars
                 rst #10         ;печать сообщения
                 ret
@@ -22,12 +28,66 @@ OverlayMemInfoTotal
                 ld c,InfoMem    ;информация о памяти
                 rst #10
 
-                ld de,VarTMem
+                ld de,OverlayVarTMem
                 call CalcMem
 
-                ld hl,TotalMem
+                ld hl,OverlayTotalMem
                 ld c,PChars
                 rst #10         ;печать сообщения
+                ret
+
+OverlayPrintErrors
+                ld hl,(ErrorPass)
+                ld de,OverlayErrors+8
+                call Hex2Dec
+                ld hl,OverlayErrors
+                ld c,PChars
+                rst #10
+                ret
+
+OverlayTimeCalc ld c,SysTime
+                rst #10         ;время оконочания компиляции
+                ld a,(TimeComp) ;секунды,
+                ld de,(TimeComp+1);часы и минуты начала компиляции
+                ld c,a
+                ld a,b
+                ld b,60
+                sub c
+                ld c,a          ;кол-во секунд компиляции
+                jr nc,OverlayTC1
+                add a,b
+                ld c,a          ;корректировка секунд
+                ld a,l          ;и минут
+                sub 1
+                ld l,a
+                jr nc,OverlayTC1
+                add a,b
+                ld l,a          ;корректировка минут
+OverlayTC1      ld a,l
+                sub e
+                jr nc,OverlayTC2
+                add a,b
+OverlayTC2      push bc
+                ld h,0
+                ld l,a
+                ld de,OverlayPrTimeComp+16 ;место для минут
+                ld bc,OverlayTC3
+                push bc
+                push de
+                inc de
+                jp Hex2Dec2     ;минуты в строку
+OverlayTC3      pop bc
+                ld h,0
+                ld l,c
+                ld de,OverlayPrTimeComp+19 ;место для секунд
+                ld bc,OverlayTC4
+                push bc
+                push de
+                inc de
+                jp Hex2Dec2     ;секунды в строку
+OverlayTC4      ld hl,OverlayPrTimeComp
+                ld c,PChars
+                rst #10         ;печать сообщения о времени компиляции
                 ret
 
 OverlayExitDSS
@@ -147,6 +207,30 @@ OverlayErrorTabl
                 dw Overlay_c18,Overlay_c19,Overlay_c1a,Overlay_c1b
                 dw Overlay_c1c,Overlay_c1d,Overlay_c1e,Overlay_c1f
                 dw Overlay_c20
+
+OverlayTotalMem db "Total memory: "
+OverlayVarTMem db "     "
+                db "kB",13,10,0
+OverlayFreeMem db "Free memory:  "
+OverlayVarFMem db "     "
+                db "kB",13,10,0
+OverlayScanning db 13,10,"Scanning Symbol table...     ",13,10,0
+OverlayLoading db 13,10,"Load file: ",0
+OverlaySaving  db 13,10
+OverlaySavingText
+                db "Save file: ",0
+OverlayIncluding
+                db 13,10,10,"Include file: ",0
+OverlayIncludingBin
+                db 13,10,10,"Incbin file: ",0
+OverlayContinue
+                db 13,10,"Return to file: ",0
+OverlayErrors  db "Errors: 00000",32,32,32,"No code generated...",13,10,0
+OverlayPrPause db "Pause...  <Esc> to Exit or <AnyKey> to Continue",0
+OverlayAbortMsg
+                db 13,10,"Compilation cancelled by Ctrl+C",13,10,0
+OverlayPrTimeComp
+                db 13,10,"Compile time - 00:00",13,10,10,0
 
 OverlayEnd
                 ifdef ORGASM_HOST_BUILD

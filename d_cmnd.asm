@@ -1163,9 +1163,8 @@ _include	push hl
 		ld de,#0000	;и обнуляем его
 		ld (NumString),de
 
-		ld hl,Including
-		ld c,PChars
-		call DSS
+		ld de,OverlayIncluding
+		call PrintOverlayString
 
 		call SaveCurPath
 		ld hl,DataBuf
@@ -1211,9 +1210,8 @@ IB1		ld b,1
 IB2		call SStrC2
 IB2A		push hl
 		push de
-		ld hl,IncludingBin
-		ld c,PChars
-		call DSS
+		ld de,OverlayIncludingBin
+		call PrintOverlayString
 		ld hl,DataBuf
 		push hl
 		call PrString

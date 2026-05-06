@@ -390,9 +390,8 @@ ComStr9         ld hl,(RepFAdr) ;создаем имя файла-репорта
                 ld c,a
                 ld (InFileID),bc
 
-                ld hl,Loading
-                ld c,PChars
-                rst #10         ;печать сообщения о загрузке
+                ld de,OverlayLoading
+                call PrintOverlayString ;печать сообщения о загрузке
                 ld hl,ComBuffer
                 ld de,MainFileName
                 ld bc,128
@@ -495,9 +494,8 @@ AsmPauseKey
                 push de
                 ld c,Locate
                 rst #10         ;новые координаты курсора
-                ld hl,PrPause
-                ld c,PChars
-                rst #10         ;печать сообщения о паузе
+                ld de,OverlayPrPause
+                call PrintOverlayString ;печать сообщения о паузе
                 ld b,0
                 ld d,b
                 ld e,b
@@ -563,9 +561,8 @@ AsmF1           ld a,(CurrentFile)
                 ld hl,CRLF
                 ld c,PChars
                 rst #10         ;переход на новую строку
-                ld hl,Continue
-                ld c,PChars
-                rst #10         ;печать сообщения о возврате к файлу-родителю
+                ld de,OverlayContinue
+                call PrintOverlayString ;печать сообщения о возврате к файлу-родителю
                 pop hl
                 ld de,#0009
                 add hl,de
@@ -640,11 +637,8 @@ AsmF4           ld a,(PhaseFlag);вначале проверяем все фла
                 ld c,PChars
                 rst #10         ;перевод строки
                 pop hl
-                ld de,Errors+8
-                call Hex2Dec    ;кол-во ошибок
-                ld hl,Errors
-                ld c,PChars
-                rst #10         ;печать сообщения о кол-ве ошибок
+                ld hl,OverlayPrintErrors
+                call CallOverlay;печать сообщения о кол-ве ошибок
                 jp ExitDSS
 
 AsmF3           ld c,Cursor
@@ -671,9 +665,8 @@ SaveOutF        call SaveDirectiveFiles
                 ld a,(NoOutFlag)
                 or a
                 jr nz,SOF02
-                ld hl,Saving
-                ld c,PChars
-                rst #10         ;сообшение о записи файла
+                ld de,OverlaySaving
+                call PrintOverlayString ;сообшение о записи файла
                 ld hl,(OutFAdr)
                 call PrString   ;печать имени файла
 ;                ld hl,CRLF
@@ -697,9 +690,8 @@ SaveOutF        call SaveDirectiveFiles
                 ld (GlBufer),a
                 dec a
                 ld (Operand1),a
-                ld hl,Scanning
-                ld c,PChars
-                rst #10         ;сообшение о сканировании
+                ld de,OverlayScanning
+                call PrintOverlayString ;сообшение о сканировании
                 call NewSub
                 ld a,(OutFileID+1) ; ???
                 dec a
@@ -709,9 +701,8 @@ SaveOutF        call SaveDirectiveFiles
                 sub d
                 or e
                 jr z,SOF02
-SOF01           ld hl,Saving+2  ;пропускаем CRLF
-                ld c,PChars
-                rst #10         ;сообщение о сохранении
+SOF01           ld de,OverlaySavingText ;пропускаем CRLF
+                call PrintOverlayString ;сообщение о сохранении
                 ld hl,(RepFAdr)
                 call PrString
                 ld hl,(RepFAdr)
@@ -739,9 +730,8 @@ SOF02           ld a,(SymFlag)
                 sub d
                 or e
                 jr z,TimeCalc
-SOF04           ld hl,Saving+2 ;пропускаем CRLF
-                ld c,PChars
-                rst #10
+SOF04           ld de,OverlaySavingText ;пропускаем CRLF
+                call PrintOverlayString
                 ld hl,(RepFAdr)
                 call PrString
                 ld hl,(RepFAdr)
@@ -749,50 +739,8 @@ SOF04           ld hl,Saving+2 ;пропускаем CRLF
 ;
 ;Расчет времени компиляции
 ;
-TimeCalc        ld c,SysTime
-                rst #10         ;время оконочания компиляции
-                ld a,(TimeComp) ;секунды,
-                ld de,(TimeComp+1);часы и минуты начала компиляции
-                ld c,a
-                ld a,b
-                ld b,60
-                sub c
-                ld c,a          ;кол-во секунд компиляции
-                jr nc,TC1
-                add a,b
-                ld c,a          ;корректировка секунд
-                ld a,l          ;и минут
-                sub 1
-                ld l,a
-                jr nc,TC1
-                add a,b
-                ld l,a          ;корректировка минут
-TC1             ld a,l
-                sub e
-                jr nc,TC2
-                add a,b
-TC2             push bc
-                ld h,0
-                ld l,a
-                ld de,PrTimeComp+16 ;место для минут
-                ld bc,TC3
-                push bc
-                push de
-                inc de
-                jp Hex2Dec2     ;минуты в строку
-TC3             pop bc
-                ld h,0
-                ld l,c
-                ld de,PrTimeComp+19 ;место для секунд
-                ld bc,TC4
-                push bc
-                push de
-                inc de
-                jp Hex2Dec2     ;секунды в строку
-TC4             ld hl,PrTimeComp
-                ld c,PChars
-                rst #10         ;печать сообщения о времени компиляции
-
+TimeCalc        ld hl,OverlayTimeCalc
+                call CallOverlay
                 jp ExitDSS
 
 OpenErrLog      ld a,(ErrFile)
@@ -1186,9 +1134,8 @@ SDF0            ld hl,(SaveReqCur)
                 inc hl
                 ld (SaveLenTmp),de
                 push hl
-                ld hl,Saving
-                ld c,PChars
-                rst #10
+                ld de,OverlaySaving
+                call PrintOverlayString
                 pop hl
                 push hl
                 call PrString
@@ -1640,11 +1587,18 @@ MemInfoFree     ld hl,OverlayMemInfoFree
 MemInfoTotal    ld hl,OverlayMemInfoTotal
                 jp CallOverlay
 
+PrintOverlayString
+                ld hl,OverlayPrintString
+                jp CallOverlay
+
 CallOverlay     in a,(Page2)
                 push af
-                call MapOverlay
-                ld de,OverlayReturn
                 push de
+                call MapOverlay
+                pop de
+                push hl
+                ld hl,OverlayReturn
+                ex (sp),hl
                 jp (hl)
 
 OverlayReturn   pop af
@@ -1769,9 +1723,8 @@ CUA2            pop hl
 
 UserAbort       ld hl,1
                 ld (ErrorPass),hl
-                ld hl,AbortMsg
-                ld c,PChars
-                rst #10
+                ld de,OverlayAbortMsg
+                call PrintOverlayString
                 jp ExitDSS
 ;
 ;Вызов функций DSS с установкой стека и страницы.
@@ -1888,29 +1841,13 @@ Error           ld hl,OverlayError
 ;
 ;
 ErrorPort       db "Invalid RAM-port",13,10,0
-TotalMem        db "Total memory: "
-VarTMem         db "     " ; для zmac переделано - было ds 5," " (Shaos)
-                db "kB",13,10,0
-FreeMem1        db "Free memory:  "
-VarFMem         db "     " ; для zmac переделано - было ds 5," " (Shaos)
-                db "kB",13,10,0
 PassText        db "Pass 1",13,10,0
-Scanning        db 13,10,"Scanning Symbol table...     ",13,10,0 ; новое в v0.2X
-Loading         db 13,10,"Load file: ",0
-Saving          db 13,10,"Save file: ",0
-Including       db 13,10,10,"Include file: ",0
-IncludingBin    db 13,10,10,"Incbin file: ",0 ; новое в v0.2X
-Continue        db 13,10,"Return to file: ",0
 Asembling       db "Current line: 00000",13,0
 ;PrPCAddres      db "(00000)",13,0
-Errors          db "Errors: 00000",32,32,32,"No code generated...",13,10,0
 ErrLineBuf      db "00000",0
 ErrColon        db ":",0
 ErrColonSpace   db ": ",0
 ErrCRLF         db 13,10,0
-PrPause         db "Pause...  <Esc> to Exit or <AnyKey> to Continue",0
-AbortMsg        db 13,10,"Compilation cancelled by Ctrl+C",13,10,0
-PrTimeComp      db 13,10,"Compile time - 00:00",13,10,10,0
 CRLF            db 10,13,0
 OkText          db "O'Key!",13,10,0
 

@@ -7,8 +7,11 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 - [x] Move fatal DSS error handling (`Error`, `ErrorDSS`, `ErrorDSS1`) out of resident win1 into the win2 overlay page.
 - [x] Move startup/exit memory service code (`MemInfoTotal`, `MemInfoFree`, `FrMem*`) out of resident win1 into the win2 overlay page.
 - [x] Split win2 overlay implementation into `overlay.asm` and resolve overlay entry labels directly from the shared project assembly, without a fixed `jp` table at `OverlayStart`.
-- [ ] Move remaining text resources that can be addressed outside hot parser paths.
-- [ ] Analyze risks for moving final output code (`SaveOutF`, `CreateSub`, `SaveDirectiveFiles`, `SaveRangeFile`, `ClampSaveLen`), `/L` error-log code (`OpenErrLog`, `WriteErrLog`, `CloseErrLog`, `MakeDefaultErrName`, `ErrGetFileName`), include path helpers (`SaveCurPath`, `RestoreCurPath`, `CurSpec`), selected `LoadFile` parts, and UI/formatting helpers (`Hex2Dec`, `TimeCalc`, progress/time printing).
+- [x] Move remaining text resources that can be addressed outside hot parser paths:
+  startup/load/save/include/continue/scanning/pause/abort messages, memory totals, error-count
+  summary, and compile-time summary now live in the win2 overlay; resident code prints overlay
+  strings through one shared wrapper.
+- [ ] Analyze risks for moving final output code (`SaveOutF`, `CreateSub`, `SaveDirectiveFiles`, `SaveRangeFile`, `ClampSaveLen`), `/L` error-log code (`OpenErrLog`, `WriteErrLog`, `CloseErrLog`, `MakeDefaultErrName`, `ErrGetFileName`), include path helpers (`SaveCurPath`, `RestoreCurPath`, `CurSpec`), selected `LoadFile` parts, and remaining UI/formatting helpers (`Hex2Dec`, hot progress-line printing).
 
 ## Priority 2: Correct Relative Branch Expressions
 
