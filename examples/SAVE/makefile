@@ -1,12 +1,13 @@
 ASM = ..\..\ORGASM.EXE
 SRC = MAIN.ASM
-OUT1 = CODE.BIN
-OUT2 = COPY.BIN
+OUT1 = OUT\CODE.BIN
+OUT2 = OUT\COPY.BIN
+OUT3 = OUT\HIGH.BIN
 DELTOOL = MKDEL.EXE
 
 .PHONY: all clean
 
-all: $(OUT1) $(OUT2)
+all: $(OUT1) $(OUT2) $(OUT3)
 
 $(OUT1): $(SRC)
 	$(ASM) $(SRC) /N /L=SAVE.ERR
@@ -14,7 +15,11 @@ $(OUT1): $(SRC)
 $(OUT2): $(SRC)
 	$(ASM) $(SRC) /N /L=SAVE.ERR
 
+$(OUT3): $(SRC)
+	$(ASM) $(SRC) /N /L=SAVE.ERR
+
 clean:
 	-$(DELTOOL) $(OUT1)
 	-$(DELTOOL) $(OUT2)
+	-$(DELTOOL) $(OUT3)
 	-$(DELTOOL) SAVE.ERR

@@ -162,6 +162,9 @@ OverlayError0
 
                 ld c,PChars     ;вывод сообщения об ошибке
                 rst #10
+                ld hl,ErrCRLF
+                ld c,PChars
+                rst #10
                 jp OverlayExitDSS
 
 Overlay_c0      db "O'Key!",13,10,0
@@ -235,4 +238,7 @@ OverlayPrTimeComp
 OverlayEnd
                 ifdef ORGASM_HOST_BUILD
                 savebin "out/overlay.bin",OverlayStart,OverlayEnd-OverlayStart
+                endif
+                ifdef ORGASM_SELF_BUILD
+                savebin "OUT\OVERLAY.BIN",OverlayStart,OverlayEnd-OverlayStart
                 endif

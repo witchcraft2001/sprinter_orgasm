@@ -78,6 +78,19 @@ copy_cp866_file() {
   mcopy -i "$image_path" -o "$converted" "::$dst"
 }
 
+copy_source_file() {
+  local src="$1"
+  local dst="$2"
+  local converted="$tmp_dir/$(basename "$dst").src"
+
+  validate_83 "$(basename "$dst")"
+  # CRLF first (awk on UTF-8 input), then convert to CP866
+  awk '{ sub(/\r$/, ""); printf "%s\r\n", $0 }' "$src" \
+    | iconv -f UTF-8 -t CP866 \
+    > "$converted"
+  mcopy -i "$image_path" -o "$converted" "::/SOURCES/$dst"
+}
+
 is_example_text_file() {
   local name
   name="$(basename "$1" | tr '[:lower:]' '[:upper:]')"
@@ -118,6 +131,22 @@ copy_file "$exe_path" "ORGASM.EXE"
 copy_cp866_file "$repo_root/README" "README"
 copy_cp866_file "$repo_root/README.eng" "README.ENG"
 copy_cp866_file "$repo_root/HISTORY" "HISTORY"
+
+mmd -i "$image_path" ::/SOURCES
+seen_source_paths="|"
+while IFS= read -r src_file; do
+  base="$(basename "$src_file")"
+  upper_name="$(printf '%s' "$base" | tr '[:lower:]' '[:upper:]')"
+  if [[ "$seen_source_paths" == *"|$upper_name|"* ]]; then
+    echo "Error: duplicate 8.3 source name after uppercasing: $upper_name" >&2
+    exit 1
+  fi
+  seen_source_paths="$seen_source_paths$upper_name|"
+  copy_source_file "$src_file" "$upper_name"
+done < <(find "$repo_root" -maxdepth 1 -type f \
+           \( -iname '*.asm' -o -iname 'Makefile' -o -iname '*.bat' \) \
+           ! -iname 'orgasm.lst' \
+           | sort)
 
 if [ -d "$examples_dir" ]; then
   mmd -i "$image_path" ::/EXAMPLES

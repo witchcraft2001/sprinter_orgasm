@@ -205,7 +205,7 @@ Sprite:         incbin "sprite.bin"
 Part:           incbin "data.bin",16,32
 ```
 
-Inserts a whole binary file or a range selected by offset and length.
+Inserts a whole binary file or a range selected by offset and length. The file name can include a directory, for example `"OUT\CORE.BIN"`; OrgAsm temporarily changes into that directory, opens the file by its short name, and then restores the original DSS directory.
 
 ### SAVE / SAVEBIN
 
@@ -217,7 +217,7 @@ End:
                 save "COPY.BIN",#4000,End-#4000
 ```
 
-Saves a range of compiled code to a binary file after the second pass succeeds. Writes are deferred until the end of compilation, so failed builds do not create partial files. If the requested length extends past the generated object code, only the available part of the range is saved. Use `/N` when the source should produce files only through explicit `SAVE`/`SAVEBIN` directives.
+Saves a range of compiled code to a binary file after the second pass succeeds. The file name can include a directory, for example `"OUT\CODE.BIN"`; when that directory part is present but does not exist yet, OrgAsm tries to create it, temporarily changes into it, and creates the file by its short name. An existing file with the same name is deleted before writing so an older, longer tail cannot remain after a shorter rebuild. After each deferred write, OrgAsm restores the current DSS directory, so multiple relative paths are resolved from the same source build directory. Writes are deferred until the end of compilation, so failed builds do not create partial files. The range is resolved through the map of actually generated `ORG` segments, so separate code blocks can be saved by their logical addresses without filling gaps with zeroes. If the requested length extends past the resolved generated segment, only the available part of the range is saved. Use `/N` when the source should produce files only through explicit `SAVE`/`SAVEBIN` directives.
 
 ### OUTPUT / OUTEND
 
@@ -299,7 +299,7 @@ Examples are stored in `examples/`:
 
 Each example directory contains a Sprinter make `makefile` and a `build.bat` file for users without make.
 
-`ORGSELF.ASM` in the source tree is the target-side self-host wrapper: it includes `ORGASM.ASM` and saves the unpacked core as `CORE.BIN` from `#4100`. The complete packed `ORGASM.EXE` is produced by the repository `make` flow.
+Target-side self-hosting uses plain OrgAsm wrappers without sjasmplus command line defines: `ORGSELF.ASM` saves both `OUT\CORE.BIN` and `OUT\OVERLAY.BIN` in one build, then `ORGLDUP.ASM` builds an unpacked `ORGASM.EXE` from those two files. `SELFBLD.BAT` runs these two steps.
 
 ## Distribution
 

@@ -40,6 +40,7 @@ Write           equ #14
 Move_FP         equ #15
 CurDir          equ #1e
 ChDir           equ #1d
+MkDir           equ #1b
 SysTime         equ #21
 WaitKey         equ #30
 ScanKey         equ #31
@@ -423,6 +424,9 @@ AsmF2           ld hl,CRLF
                 ld (OutputActive),a
                 dec a
                 ld (CondActive),a
+                ld hl,#8000
+                ld (SaveObjAdr),hl
+                call ResetObjMap
                 ld hl,#8100
                 ld (PCAddres),hl
                 ld (RetAddres),sp
@@ -1147,16 +1151,23 @@ SDF0            ld hl,(SaveReqCur)
                 ld (SaveReqCur),hl
                 jr SDF0
 
-SaveRangeFile  call ClampSaveLen
+SaveRangeFile  push hl
+                call SaveCurPath
+                pop hl
+                call PrepareSaveSpec
+                jp c,Error
+                call MapSaveRange
+                ld hl,(SaveNamePtr)
+                push hl
+                ld c,Delete
+                rst #10
+                pop hl
                 ld a,00100000b
                 ld c,Create
                 rst #10
-                jp c,Error
+                jp c,SaveRangeError
                 ld (OpenFile),a
-                ld hl,(SaveStartTmp)
-                ld de,(New1)
-                or a
-                sbc hl,de
+                ld hl,(SaveObjOffTmp)
                 ld a,h
                 and #c0
                 rlca
@@ -1177,7 +1188,7 @@ SRF1            ld hl,(SaveLenTmp)
                 ld a,(OutFileID)
                 ld c,SetWin3
                 rst #10
-                jp c,Error
+                jp c,SaveRangeError
                 ld hl,0
                 ld de,(SaveOff)
                 or a
@@ -1195,7 +1206,7 @@ SRF3            push de
                 ld a,(OpenFile)
                 ld c,Write
                 rst #10
-                jp c,Error
+                jp c,SaveRangeError
                 pop de
                 ld hl,(SaveLenTmp)
                 or a
@@ -1215,9 +1226,159 @@ SRF5            ld (SaveOff),hl
 SRF4            ld a,(OpenFile)
                 ld c,Close
                 rst #10
-                jp c,Error
+                jp c,SaveRangeError
                 xor a
                 ld (OpenFile),a
+                jp RestoreCurPath
+
+SaveRangeError push af
+                call RestoreCurPath
+                pop af
+                jp Error
+
+ResetObjMap    xor a
+                ld (ObjSegCount),a
+                ld hl,ObjSegTable
+                ld (ObjSegPtr),hl
+                ld hl,0
+                ld (ObjSegCur),hl
+                ld de,#8100
+                jp RegisterObjSegment
+
+RegisterObjSegment
+                push af
+                push bc
+                push de
+                push hl
+                ld a,(Pass)
+                or a
+                jr z,ROS9
+                ld a,(ObjSegCount)
+                cp MaxObjSeg
+                jr nc,ROS9
+                ld hl,(ObjSegPtr)
+                ld (ObjSegCur),hl
+                ld (hl),e
+                inc hl
+                ld (hl),d
+                inc hl
+                push hl
+                call CurrentObjOffset
+                ex de,hl
+                pop hl
+                ld (hl),e
+                inc hl
+                ld (hl),d
+                inc hl
+                ld (hl),e
+                inc hl
+                ld (hl),d
+                inc hl
+                ld (ObjSegPtr),hl
+                ld a,(ObjSegCount)
+                inc a
+                ld (ObjSegCount),a
+ROS9            pop hl
+                pop de
+                pop bc
+                pop af
+                ret
+
+UpdateObjSegmentEnd
+                push af
+                push bc
+                push de
+                push hl
+                ld hl,(ObjSegCur)
+                ld a,h
+                or l
+                jr z,UOSE9
+                inc hl
+                inc hl
+                inc hl
+                inc hl
+                push hl
+                call CurrentObjOffset
+                ex de,hl
+                pop hl
+                ld (hl),e
+                inc hl
+                ld (hl),d
+UOSE9           pop hl
+                pop de
+                pop bc
+                pop af
+                ret
+
+CurrentObjOffset
+                ld hl,(SaveObjAdr)
+                ld de,#8000
+                or a
+                sbc hl,de
+                ld a,(OutFileID+1)
+                dec a
+                ret z
+COO1            ld de,#4000
+                add hl,de
+                dec a
+                jr nz,COO1
+                ret
+
+MapSaveRange   ld hl,0
+                ld (SaveObjOffTmp),hl
+                ld a,(ObjSegCount)
+                or a
+                jr z,MSR9
+                ld b,a
+                ld hl,ObjSegTable
+MSR1            push bc
+                ld e,(hl)
+                inc hl
+                ld d,(hl)
+                inc hl
+                ld (ObjSegPcTmp),de
+                ld e,(hl)
+                inc hl
+                ld d,(hl)
+                inc hl
+                ld (ObjSegObjTmp),de
+                ld e,(hl)
+                inc hl
+                ld d,(hl)
+                inc hl
+                ld (ObjSegNextTmp),hl
+                ex de,hl
+                ld de,(ObjSegObjTmp)
+                or a
+                sbc hl,de       ;length of this generated segment
+                ld (ObjSegLenTmp),hl
+                ld a,h
+                or l
+                jr z,MSR7
+                ld hl,(SaveStartTmp)
+                ld de,(ObjSegPcTmp)
+                or a
+                sbc hl,de       ;delta from segment logical start
+                jr c,MSR7
+                ld (ObjSegDeltaTmp),hl
+                ld de,(ObjSegLenTmp)
+                or a
+                sbc hl,de
+                jr nc,MSR7
+                ld hl,(ObjSegObjTmp)
+                ld de,(ObjSegDeltaTmp)
+                add hl,de
+                ld (SaveObjOffTmp),hl
+                ;Объектный буфер непрерывен через все org-сегменты
+                ;(org меняет только логический PC, не SaveObjAdr), так
+                ;что обрезать SaveLenTmp по длине одного сегмента нельзя.
+                pop bc
+                ret
+MSR7            ld hl,(ObjSegNextTmp)
+                pop bc
+                djnz MSR1
+MSR9            ld hl,0
+                ld (SaveLenTmp),hl
                 ret
 
 ClampSaveLen   push hl
@@ -1251,6 +1412,95 @@ SVCL3           ld de,(SaveLenTmp)
                 jr nc,SVCL4
                 ld (SaveLenTmp),hl
 SVCL4           pop hl
+                ret
+
+PrepareSaveSpec
+                ld (SaveNamePtr),hl
+                ld (SaveDirPtr),hl
+                push hl
+                ld de,0
+ESD1            ld a,(hl)
+                or a
+                jr z,ESD2
+                cp '\'
+                jr z,ESD1B
+                cp '/'
+                jr nz,ESD1A
+ESD1B
+                ld d,h
+                ld e,l
+ESD1A           inc hl
+                jr ESD1
+ESD2            ld a,d
+                or e
+                jr nz,ESD3
+                pop hl
+                ret
+ESD3            pop hl
+                push hl
+                push de
+                ld a,(de)
+                ld (SaveSpecSlash),a
+                ex de,hl
+                xor a
+                ld (hl),a
+                ex de,hl
+                ld c,MkDir
+                rst #10
+                ld hl,(SaveDirPtr)
+                ld c,ChDir
+                rst #10
+                pop de
+                push af
+                ld a,(SaveSpecSlash)
+                ld (de),a
+                inc de
+                ld (SaveNamePtr),de
+                pop af
+                pop hl
+                ret
+
+PrepareReadSpec
+                ld (SaveNamePtr),hl
+                ld (SaveDirPtr),hl
+                push hl
+                ld de,0
+PRS1            ld a,(hl)
+                or a
+                jr z,PRS2
+                cp '\'
+                jr z,PRS1B
+                cp '/'
+                jr nz,PRS1A
+PRS1B
+                ld d,h
+                ld e,l
+PRS1A           inc hl
+                jr PRS1
+PRS2            ld a,d
+                or e
+                jr nz,PRS3
+                pop hl
+                ret
+PRS3            pop hl
+                push hl
+                push de
+                ld a,(de)
+                ld (SaveSpecSlash),a
+                ex de,hl
+                xor a
+                ld (hl),a
+                ld hl,(SaveDirPtr)
+                ld c,ChDir
+                rst #10
+                pop de
+                push af
+                ld a,(SaveSpecSlash)
+                ld (de),a
+                inc de
+                ld (SaveNamePtr),de
+                pop af
+                pop hl
                 ret
 ;
 ;Создание строки: текущий диск, текущий путь, имя основного файла
@@ -1307,11 +1557,19 @@ RestoreCurPath  ld a,(SaveCurDisk)
                 ld c,ChDisk
                 rst #10
                 jp c,Error
+                ld hl,RootDirPath ;сначала в корень, чтобы относительный путь
+                ld c,ChDir        ;из SaveCurDir интерпретировался от корня
+                rst #10
+                jp c,Error
                 ld hl,SaveCurDir
+                ld a,(hl)
+                or a
+                ret z             ;CurDir вернул пустую строку — мы и так в корне
                 ld c,ChDir
                 rst #10
                 jp c,Error
                 ret
+RootDirPath     db '\',0
 
 SetBankMap      ld de,(MapLabelID)
                 jr SetBankAsm1
@@ -1900,10 +2158,22 @@ SaveReqPtr      dw SaveReqTable ;следующая запись SAVE/SAVEBIN
 SaveReqCur      dw 0            ;текущая запись при сохранении
 SaveStartTmp    dw 0            ;рабочий адрес SAVE/SAVEBIN
 SaveLenTmp      dw 0            ;рабочая длина SAVE/SAVEBIN
+SaveObjOffTmp   dw 0            ;смещение SAVE/SAVEBIN в объектном блоке
 SaveOff         dw 0            ;рабочее смещение в окне #c000
 SaveCurPage     db 0            ;рабочая страница выходного блока
+SaveDirPtr      dw 0            ;каталог для SAVE/SAVEBIN
+SaveNamePtr     dw 0            ;имя файла после перехода в каталог SAVE
+SaveSpecSlash   db 0            ;разделитель пути, временно заменяемый на #00
 SaveCurDisk     db 0            ;диск перед загрузкой INCLUDE
 SaveCurDir      ds 128          ;каталог перед загрузкой INCLUDE
+ObjSegCount     db 0            ;количество сегментов объектного кода
+ObjSegPtr       dw ObjSegTable  ;следующая запись сегмента
+ObjSegCur       dw 0            ;текущий сегмент для ObjCopy
+ObjSegPcTmp     dw 0
+ObjSegObjTmp    dw 0
+ObjSegLenTmp    dw 0
+ObjSegDeltaTmp  dw 0
+ObjSegNextTmp   dw 0
 LastLineCR      db 0            ;предыдущий прочитанный байт был CR
 CondActive      db #ff          ;#ff - текущий блок активен, #00 - пропуск
 CondDepth       db 0            ;глубина условной компиляции
@@ -1943,14 +2213,32 @@ MaxSaveReq      equ 8
 SaveReqNameLen  equ 64
 SaveReqSize     equ SaveReqNameLen+4
 SaveReqTable    ds SaveReqSize*MaxSaveReq
+MaxObjSeg       equ 32
+ObjSegSize      equ 6
+ObjSegTable     ds ObjSegSize*MaxObjSeg
 TblLoadFile     ds LoadFileRecSize*MaxLoadFile
 MaxCond         equ 16
 CondParent      ds MaxCond      ;активность родительского блока
 CondSeen        ds MaxCond      ;истинная ветка текущего IF уже была
 CondAct         ds MaxCond      ;активность текущего уровня
 CoreEnd
+                ; Диагностика: фиксируем layout host-сборки, чтобы заметить
+                ; неожиданные сдвиги core. На target target-калькулятор
+                ; криво обрабатывает форму "label = literal", поэтому
+                ; ассерты прячем под ORGASM_HOST_BUILD.
+                ifdef ORGASM_HOST_BUILD
+                assert Start = #4100, "ASRT Start"
+                assert OverlayID = #7349, "ASRT OverlayID"
+                assert TimeComp = #7B59, "ASRT TimeComp"
+                assert TimeComp+1 = #7B5A, "ASRT TimeComp+1"
+                assert CoreEnd = #7B39, "ASRT CoreEnd"
+                assert CoreEnd-Start = #3A39, "ASRT CoreEnd-Start"
+                endif
                 ifdef ORGASM_HOST_BUILD
                 savebin "out/core.bin",Start,CoreEnd-Start
+                endif
+                ifdef ORGASM_SELF_BUILD
+                savebin "OUT\CORE.BIN",Start,CoreEnd-Start
                 endif
 ;FileID          equ $           ;id открытого файла (1)
 ;MemID           equ FileID+1    ;адрес таблицы выделенной памяти (2)
@@ -1996,6 +2284,13 @@ ComBuffer       equ StackNum+96 ;начало буфера параметров 
 ; 2 блок - объектный код
 ; 3 блок - исходный листинг
 ; 4 блок - репорт о процессе компиляции (?)
+
+                ; ComBuffer должен полностью помещаться в win1 (#4000-#7FFF),
+                ; иначе записи в командную строку и спецификации файлов уходят
+                ; в win2 поверх таблицы меток. См. инцидент 2026-05-07.
+                ifdef ORGASM_HOST_BUILD
+                assert ComBuffer + 128 <= #8000, "ASRT ComBuffer overflows win1"
+                endif
 
                 ifdef ORGASM_WITH_OVERLAY
                 org OverlayBase

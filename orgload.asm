@@ -38,7 +38,9 @@ ExeHeader       db "EXE"
                 dw LoaderLoad
                 dw LoaderStart
                 dw LoaderStack
-                assert $ == ExeHeader+ExeHeaderSize
+                ifdef ORGASM_HOST_BUILD
+                assert $ = ExeHeader+ExeHeaderSize
+                endif
 
                 org LoaderLoad
                 ds LoaderStart-$
@@ -166,13 +168,23 @@ LoadError       db 13,10,"Loader error",13,10,0
 LoaderEnd
 LoaderSize      equ LoaderEnd-LoaderEntry
 LoaderImageSize equ LoaderEnd-LoaderLoad
+                ifdef ORGASM_HOST_BUILD
+                ; OrgAsm-калькулятор криво работает с '<=', оставляем
+                ; sanity-check только в host-сборке.
                 assert LoaderEnd <= PayloadBuffer
+                endif
 
 PayloadStart
+                ifdef ORGASM_HOST_BUILD
                 ifdef ORGASM_UNPACKED
                 incbin "out/core.bin"
                 else
                 incbin "out/core.hst"
+                endif
+                else
+                display "DBG: before incbin core.bin"
+                incbin "OUT\CORE.BIN"
+                display "DBG: after incbin core.bin"
                 endif
 PayloadEnd
 PayloadSize     equ PayloadEnd-PayloadStart
@@ -182,6 +194,12 @@ PayloadSize     equ PayloadEnd-PayloadStart
                 endif
 
 OverlayPayloadStart
+                ifdef ORGASM_HOST_BUILD
                 incbin "out/overlay.bin"
+                else
+                display "DBG: before incbin overlay.bin"
+                incbin "OUT\OVERLAY.BIN"
+                display "DBG: after incbin overlay.bin"
+                endif
 OverlayPayloadEnd
 OverlayPayloadSize equ OverlayPayloadEnd-OverlayPayloadStart

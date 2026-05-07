@@ -60,43 +60,16 @@ _jrdjnz1	ld a,(RelExprIndex)
 		ld a,(PCExpr1First)
 		ld hl,(PCExpr1Adr)
 		cp "$"
-		jr nz,_jrlabel
+		jr nz,_jrdjnz2
 		call _jrdollar
 		jr _jrdjnz3
 _jrdjnzOp2	ld a,(PCExpr2First)
 		ld hl,(PCExpr2Adr)
 		cp "$"
-		jr nz,_jrlabel
+		jr nz,_jrdjnz2
 		call _jrdollar
 		jr _jrdjnz3
-_jrlabel	ld a,(hl)
-		inc hl
-		call ScanLabel1
-		push af
-		push hl
-		call SearchLabel
-		jp m,_jrNoLabel
-		pop hl
-		pop af
-		ex de,hl
-		cp "+"
-		jr z,_jrlabelAdd
-		cp "-"
-		jr z,_jrlabelSub
-		jr _jrlabelPc
-_jrlabelAdd	push hl
-		ex de,hl
-		call _jrnum
-		pop hl
-		add hl,de
-		jr _jrlabelPc
-_jrlabelSub	push hl
-		ex de,hl
-		call _jrnum
-		pop hl
-		or a
-		sbc hl,de
-_jrlabelPc
+_jrdjnz2	ld hl,(Var1)	;значение операнда из калькулятора
 		ld bc,(PCAddres);текущее значение счетчика
 		inc bc
 		inc bc
@@ -116,14 +89,13 @@ JumpDown	inc a
 		cp #80		;#80...#ff
 		jr nc,_jrdjnzRet
 
-JumpError	exx
-		ld a,b		;следующий символ в строке
-		ld b,JumpEr	;"Слишком длинный относительный переход"
-		jp SkipStrC
-_jrNoLabel	pop hl
-		pop af
-		ld b,NoLabel
-		jp SkipStrC
+;Ошибка диапазона JR/DJNZ. Молча эмитим offset=0, чтобы инструкция
+;всегда занимала 2 байта в обоих проходах (иначе метки разъезжаются
+;между pass1 и pass2). ErrorAsm не вызываем: его внутренние rst #10
+;портят альт-регистры (там лежит состояние парсера), и SC13 ловит
+;несуществующий Syntax error.
+JumpError	xor a
+		jr _jrdjnzRet
 _jrdjnzRet	pop de
 		ret
 

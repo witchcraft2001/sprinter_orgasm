@@ -175,18 +175,72 @@ EDUP2		pop hl
 		ld a,(CondDelim)
 		ld b,0
 		ret
-;DISPLAY "text"
+;DISPLAY "text"[, expr | "text2" ...]
+;Печатает разделённый запятыми список строк/выражений.
+;Выражения печатаются как 4-х значное HEX-число.
 _display	ld de,DataBuf
 		call OutputSpec
+DspLoop		ld (CondDelim),a
+		cp ","
+		jr nz,DspEnd
+DspSkip		ld a,(hl)
+		cp #20
+		jr z,DspSkip1
+		cp #09
+		jr nz,DspNoSkip
+DspSkip1	inc hl
+		jr DspSkip
+DspNoSkip	cp '"'
+		jr z,DspStr
+		cp "'"
+		jr z,DspStr
+		inc hl		;GetVar ждёт A=1-й символ, HL=за ним
+		push de		;сохранили буфер
+		call GetVar	;DE=значение, HL=src, A=символ конца
 		ld (CondDelim),a
-		ld a,(Pass)
-		inc a
-		jr nz,DSP1
+		ex (sp),hl	;HL=буфер из стека, в стеке теперь src
+		ex de,hl	;DE=буфер, HL=значение
+		call DspHex	;DE+=4, HL без изменений
+		pop hl		;HL=src
+		ld a,(CondDelim)
+		jr DspLoop
+DspStr		call OutputSpec	;OutputSpec прочитает кавычку через SkipSpace
+		jr DspLoop
+DspEnd		xor a
+		ld (de),a	;окончательный 0 в конец строки
+;DEBUG: печатаем в обоих проходах, чтобы видеть pass1-маркеры
+;		ld a,(Pass)
+;		inc a
+;		jr nz,DSP1
 		push hl
-		call DiagPrint
+		ld hl,DataBuf
+		ld c,PChars
+		rst #10
+		ld hl,CRLF
+		ld c,PChars
+		rst #10
 		pop hl
 DSP1		ld a,(CondDelim)
 		ld b,0
+		ret
+;Дописать 4 HEX-цифры HL в буфер (DE), DE двигается вперёд
+DspHex		ld a,h
+		call DspByte
+		ld a,l
+DspByte		push af
+		rrca
+		rrca
+		rrca
+		rrca
+		call DspNib
+		pop af
+DspNib		and #0F
+		add a,#30
+		cp #3A
+		jr c,DspPut
+		add a,#07
+DspPut		ld (de),a
+		inc de
 		ret
 ;ERROR "text"
 _error		push af
@@ -221,7 +275,7 @@ _assert		ld c,a
 		call GetVar
 		ld (CondDelim),a
 		call AssertMsg
-		jr DSP1
+		jp DSP1
 ASRT1		ld a,c
 		call GetVar2
 		ld (CondDelim),a
@@ -233,10 +287,7 @@ ASRT1		ld a,c
 		ld (CondDelim),a
 		ld a,(CondValue)
 		or a
-		jr nz,DSP1
-		ld a,(CondPage2)
-		or a
-		jr nz,DSP1
+		jp nz,DSP1
 		ld a,(CondPage3)
 		or a
 		jr z,ASRT2
@@ -667,6 +718,7 @@ _org		ex af,af' ;'
 		ex af,af' ;'
 		call GetVar2	;вызов калькулятора
 		ld (PCAddres),de
+		call RegisterObjSegment
 		ex af,af' ;';начало доработки для v0.2X
 		ld a,(Pass)
 		inc a
@@ -1126,6 +1178,8 @@ OSPC1		ld a,(hl)
 		cp ":"
 		jr z,OSPC2
 		cp ";"
+		jr z,OSPC2
+		cp ","		;разделитель внутри display списка
 		jp nz,SkipStrC
 OSPC2		dec de
 		xor a
@@ -1216,17 +1270,23 @@ IB2A		push hl
 		push hl
 		call PrString
 		pop hl
+		push hl		;HL=DataBuf
+		call SaveCurPath
+		pop hl
+		call PrepareReadSpec
+		jp c,IBErrorDSS
+		ld hl,(SaveNamePtr)
 		ld a,1
 		ld c,Open
 		rst #10
-		jp c,ErrorDSS
+		jp c,IBErrorDSS
 		ld (OpenFile),a
 		ld ix,0
 		ld hl,0
 		ld b,2
 		ld c,Move_FP
 		rst #10
-		jp c,ErrorDSS
+		jp c,IBErrorDSS
 		ld b,h
 		ld c,l
 		push ix
@@ -1266,7 +1326,7 @@ IB4		push bc
 		ld a,(OpenFile)
 		ld c,Move_FP
 		rst #10
-		jp c,ErrorDSS
+		jp c,IBErrorDSS
 		pop de
 		pop bc
 		ld a,e
@@ -1294,7 +1354,7 @@ IB12		ld a,c
 		push de
 		ld c,SetWin3
 		rst #10
-		jp c,ErrorDSS
+		jp c,IBErrorDSS
 		ld hl,0
 		or a
 		pop bc
@@ -1316,7 +1376,7 @@ IB10		pop ix
 		ld a,(OpenFile)
 		ld c,Read_
 		rst #10
-		jp c,ErrorDSS
+		jp c,IBErrorDSS
 		ld bc,(OutFileID)
 		push bc
 		inc b
@@ -1324,7 +1384,7 @@ IB10		pop ix
 		ld a,c
 		ld c,SetMem
 		rst #10
-		jp c,ErrorDSS
+		jp c,IBErrorDSS
 		pop bc
 		ld  de,#C000
 		jr IB12
@@ -1336,7 +1396,7 @@ IB11		res 6,h
 		ld a,(OpenFile)
 		ld c,Read_
 		rst #10
-		jp c,ErrorDSS
+		jp c,IBErrorDSS
 		pop af
 		out (Page3),a
 		pop bc
@@ -1348,10 +1408,14 @@ IB0		ld de,0
 IB14		ld a,(OpenFile)
 		ld c,Close
 		rst #10
-		jp c,ErrorDSS
+		jp c,IBErrorDSS
 		xor a
 		ld (OpenFile),a
+		call RestoreCurPath
 		pop hl
 		ld b,0
 		ld a,#0D
 		ret
+
+IBErrorDSS	call RestoreCurPath
+		jp ErrorDSS

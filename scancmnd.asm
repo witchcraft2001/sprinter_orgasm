@@ -264,6 +264,7 @@ OC1		pop bc		;длина obj кода
 
 		res 6,d
 		ld (SaveObjAdr),de
+		call UpdateObjSegmentEnd
 
 		pop af
 		out (Page3),a	;востановили банку в 3-eм окне
