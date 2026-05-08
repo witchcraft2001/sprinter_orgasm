@@ -323,6 +323,344 @@ OvEr91          db "General failure",0
 OvEr12          db "User error",0
 OvEr13          db "Assertion failed",0
 
+;-----------------------------------------------------------------------------
+; Save infrastructure (cold — runs only at end of pass2 / per save+incbin).
+; SetWin3 в SaveRangeFile и ChDir в Prepare*Spec не трогают win2,
+; так что overlay (в win2) остаётся mapped и инструкции продолжают
+; извлекаться корректно. Win1-callers заходят через тонкие трамплины.
+;-----------------------------------------------------------------------------
+
+OvSaveDirectiveFiles
+                ld hl,SaveReqTable
+                ld (SaveReqCur),hl
+OvSDF0          ld hl,(SaveReqCur)
+                ld de,(SaveReqPtr)
+                or a
+                sbc hl,de
+                ret z
+                call CheckUserAbort
+                ld hl,(SaveReqCur)
+                ld e,(hl)
+                inc hl
+                ld d,(hl)
+                inc hl
+                ld (SaveStartTmp),de
+                ld e,(hl)
+                inc hl
+                ld d,(hl)
+                inc hl
+                ld (SaveLenTmp),de
+                push hl
+                ld de,OverlaySaving
+                call PrintOverlayString
+                pop hl
+                push hl
+                call PrString
+                pop hl
+                call OvSaveRangeFile
+                ld hl,(SaveReqCur)
+                ld de,SaveReqSize
+                add hl,de
+                ld (SaveReqCur),hl
+                jr OvSDF0
+
+OvSaveRangeFile push hl
+                call OvSaveCurPath
+                pop hl
+                call OvPrepareSaveSpec
+                jp c,Error
+                call OvMapSaveRange
+                ld hl,(SaveNamePtr)
+                push hl
+                ld c,Delete
+                rst #10
+                pop hl
+                ld a,00100000b
+                ld c,Create
+                rst #10
+                jp c,OvSaveRangeError
+                ld (OpenFile),a
+                ld hl,(SaveObjOffTmp)
+                ld a,h
+                and #c0
+                rlca
+                rlca
+                ld (SaveCurPage),a
+                ld a,h
+                and #3f
+                or #c0
+                ld h,a
+                ld (SaveOff),hl
+OvSRF1          ld hl,(SaveLenTmp)
+                ld a,h
+                or l
+                jr z,OvSRF4
+                call CheckUserAbort
+                ld a,(SaveCurPage)
+                ld b,a
+                ld a,(OutFileID)
+                ld c,SetWin3
+                rst #10
+                jp c,OvSaveRangeError
+                ld hl,0
+                ld de,(SaveOff)
+                or a
+                sbc hl,de
+                ld de,(SaveLenTmp)
+                push hl
+                or a
+                sbc hl,de
+                pop hl
+                jr c,OvSRF2
+                jr OvSRF3
+OvSRF2          ex de,hl
+OvSRF3          push de
+                ld hl,(SaveOff)
+                ld a,(OpenFile)
+                ld c,Write
+                rst #10
+                jp c,OvSaveRangeError
+                pop de
+                ld hl,(SaveLenTmp)
+                or a
+                sbc hl,de
+                ld (SaveLenTmp),hl
+                ld hl,(SaveOff)
+                add hl,de
+                ld a,h
+                or l
+                jr nz,OvSRF5
+                ld hl,#c000
+                ld a,(SaveCurPage)
+                inc a
+                ld (SaveCurPage),a
+OvSRF5          ld (SaveOff),hl
+                jr OvSRF1
+OvSRF4          ld a,(OpenFile)
+                ld c,Close
+                rst #10
+                jp c,OvSaveRangeError
+                xor a
+                ld (OpenFile),a
+                jp OvRestoreCurPath
+
+OvSaveRangeError push af
+                call OvRestoreCurPath
+                pop af
+                jp Error
+
+OvMapSaveRange  ld hl,0
+                ld (SaveObjOffTmp),hl
+                ld a,(ObjSegCount)
+                or a
+                jr z,OvMSR9
+                ld b,a
+                ld hl,ObjSegTable
+OvMSR1          push bc
+                ld e,(hl)
+                inc hl
+                ld d,(hl)
+                inc hl
+                ld (ObjSegPcTmp),de
+                ld e,(hl)
+                inc hl
+                ld d,(hl)
+                inc hl
+                ld (ObjSegObjTmp),de
+                ld e,(hl)
+                inc hl
+                ld d,(hl)
+                inc hl
+                ld (ObjSegNextTmp),hl
+                ex de,hl
+                ld de,(ObjSegObjTmp)
+                or a
+                sbc hl,de
+                ld (ObjSegLenTmp),hl
+                ld a,h
+                or l
+                jr z,OvMSR7
+                ld hl,(SaveStartTmp)
+                ld de,(ObjSegPcTmp)
+                or a
+                sbc hl,de
+                jr c,OvMSR7
+                ld (ObjSegDeltaTmp),hl
+                ld de,(ObjSegLenTmp)
+                or a
+                sbc hl,de
+                jr nc,OvMSR7
+                ld hl,(ObjSegObjTmp)
+                ld de,(ObjSegDeltaTmp)
+                add hl,de
+                ld (SaveObjOffTmp),hl
+                pop bc
+                ret
+OvMSR7          ld hl,(ObjSegNextTmp)
+                pop bc
+                djnz OvMSR1
+OvMSR9          ld hl,0
+                ld (SaveLenTmp),hl
+                ret
+
+OvPrepareSaveSpec
+                ld (SaveNamePtr),hl
+                ld (SaveDirPtr),hl
+                push hl
+                ld de,0
+OvESD1          ld a,(hl)
+                or a
+                jr z,OvESD2
+                cp '\'
+                jr z,OvESD1B
+                cp '/'
+                jr nz,OvESD1A
+OvESD1B
+                ld d,h
+                ld e,l
+OvESD1A         inc hl
+                jr OvESD1
+OvESD2          ld a,d
+                or e
+                jr nz,OvESD3
+                pop hl
+                ret
+OvESD3          pop hl
+                push hl
+                push de
+                ld a,(de)
+                ld (SaveSpecSlash),a
+                ex de,hl
+                xor a
+                ld (hl),a
+                ex de,hl
+                ld c,MkDir
+                rst #10
+                ld hl,(SaveDirPtr)
+                ld c,ChDir
+                rst #10
+                pop de
+                push af
+                ld a,(SaveSpecSlash)
+                ld (de),a
+                inc de
+                ld (SaveNamePtr),de
+                pop af
+                pop hl
+                ret
+
+;OvPrepareReadSpec ожидает HL=имя файла в (SaveNamePtr). Win1-трамплин
+;PrepareReadSpec пресетит SaveNamePtr перед jp CallOverlay.
+OvPrepareReadSpec
+                ld hl,(SaveNamePtr)
+                ld (SaveDirPtr),hl
+                push hl
+                ld de,0
+OvPRS1          ld a,(hl)
+                or a
+                jr z,OvPRS2
+                cp '\'
+                jr z,OvPRS1B
+                cp '/'
+                jr nz,OvPRS1A
+OvPRS1B
+                ld d,h
+                ld e,l
+OvPRS1A         inc hl
+                jr OvPRS1
+OvPRS2          ld a,d
+                or e
+                jr nz,OvPRS3
+                pop hl
+                ret
+OvPRS3          pop hl
+                push hl
+                push de
+                ld a,(de)
+                ld (SaveSpecSlash),a
+                ex de,hl
+                xor a
+                ld (hl),a
+                ld hl,(SaveDirPtr)
+                ld c,ChDir
+                rst #10
+                pop de
+                push af
+                ld a,(SaveSpecSlash)
+                ld (de),a
+                inc de
+                ld (SaveNamePtr),de
+                pop af
+                pop hl
+                ret
+
+;OvCurSpec ожидает HL=output buffer в (SaveNamePtr) (пресетится трамплином),
+;возвращает HL = позиция после '.' в построенной спецификации.
+OvCurSpec       ld hl,(SaveNamePtr)
+                push hl
+                ld c,CurDisk
+                rst #10
+                jp c,Error
+                add a,#61
+                ld (hl),a
+                inc hl
+                ld a,":"
+                ld (hl),a
+                inc hl
+
+                ld c,CurDir
+                rst #10
+                jp c,Error
+                dec de
+                dec de
+                ld a,(de)
+                inc de
+                cp '\'
+                jr z,OvCurSpec1
+                ld a,'\'
+                ld (de),a
+                inc de
+OvCurSpec1      ld hl,ComBuffer
+                ld bc,#0345
+                rst #10
+                jp c,Error
+                pop hl
+                ld a,"."
+                ld bc,#0100
+                cpir
+                ld a,#10
+                jp nz,Error
+                ret
+
+OvSaveCurPath   ld c,CurDisk
+                rst #10
+                jp c,Error
+                ld (SaveCurDisk),a
+                ld hl,SaveCurDir
+                ld c,CurDir
+                rst #10
+                jp c,Error
+                ret
+
+OvRestoreCurPath
+                ld a,(SaveCurDisk)
+                ld c,ChDisk
+                rst #10
+                jp c,Error
+                ld hl,RootDirPath
+                ld c,ChDir
+                rst #10
+                jp c,Error
+                ld hl,SaveCurDir
+                ld a,(hl)
+                or a
+                ret z
+                ld c,ChDir
+                rst #10
+                jp c,Error
+                ret
+RootDirPath     db '\',0
+
 OverlayEnd
                 ifdef ORGASM_HOST_BUILD
                 savebin "out/overlay.bin",OverlayStart,OverlayEnd-OverlayStart

@@ -1,0 +1,15 @@
+ASM = ..\..\ORGASM.EXE
+SRC = MAIN.ASM
+OUT = CMDDEF.BIN
+DELTOOL = MKDEL.EXE
+
+.PHONY: all clean
+
+all: $(OUT)
+
+$(OUT): $(SRC)
+	$(ASM) $(SRC) /N /L=CMDDEF.ERR -DFOO -DBAR=42 -DBAZ=#ABCD
+
+clean:
+	-$(DELTOOL) $(OUT)
+	-$(DELTOOL) CMDDEF.ERR

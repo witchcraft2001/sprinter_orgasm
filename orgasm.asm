@@ -80,6 +80,11 @@ Page3           equ #e2
 
 Main
                 ld (OverlayID),a
+                ;Сразу ставим SP в win1, чтобы overlay-вызовы (CurSpec
+                ;при разборе cmdline и др.) могли безопасно делать
+                ;SetWin2 — иначе SP в #bfff (win2 = loader page) уезжает
+                ;вместе со swap'ом win2 на overlay page и стек "теряется".
+                ld sp,#7fff
                 ld c,SysTime
                 rst #10         ;время начала компиляции
                 ld (TimeComp+1),hl
@@ -175,7 +180,9 @@ ComStr10        ld c,#ff
                 cp "L"
                 jr z,ComStr16
                 cp "N"
-                jr z,ComStr23
+                jp z,ComStr23
+                cp "D"
+                jp z,ComStrDef  ;sjasmplus-совместимый -DNAME[=value]
                 cp "E"
                 ret nz
                 ld a,c
@@ -262,6 +269,58 @@ ComStr23        ld a,c
                 ld (NoOutFlag),a
                 jr ComStr13
 
+;-DNAME[=value]: пишем в CmdlineDefBuf запись формата NAME\0VALUE<CR>.
+;CR — терминатор выражения для калькулятора (NV1 в calc.asm), так что
+;после GetVar2 HL автоматически указывает на следующую запись. Конец
+;всех записей — \0 в позиции NAME (нулевой исходный init буфера).
+ComStrDef       push de
+                ld de,(CmdlineDefPtr)
+                ;Копируем NAME до '=' / пробела / 0
+ComStrDefName   ld a,(hl)
+                or a
+                jr z,ComStrDefNoVal
+                cp #20
+                jr z,ComStrDefNoVal
+                cp '='
+                jr z,ComStrDefHasEq
+                ld (de),a
+                inc de
+                inc hl
+                jr ComStrDefName
+;'=' встречен — терминируем NAME и копируем VALUE
+ComStrDefHasEq  xor a
+                ld (de),a
+                inc de
+                inc hl          ;пропускаем '='
+ComStrDefVal    ld a,(hl)
+                or a
+                jr z,ComStrDefValEnd
+                cp #20
+                jr z,ComStrDefValEnd
+                ld (de),a
+                inc de
+                inc hl
+                jr ComStrDefVal
+ComStrDefValEnd ld a,#0d        ;CR — терминатор выражения для GetVar2
+                ld (de),a
+                inc de
+                ld (CmdlineDefPtr),de
+                pop de
+                jp ComStr13
+;Нет '=' — value по умолчанию = "1"
+ComStrDefNoVal  xor a
+                ld (de),a
+                inc de
+                ld a,'1'
+                ld (de),a
+                inc de
+                ld a,#0d
+                ld (de),a
+                inc de
+                ld (CmdlineDefPtr),de
+                pop de
+                jp ComStr13
+
 ComStr14        push bc ; новое в v0.2X
                 push hl
                 ld c,Clear
@@ -276,6 +335,51 @@ ComStr14        push bc ; новое в v0.2X
                 pop hl
                 pop bc
                 jp ComStr13
+
+;ApplyCmdlineDefs: проходит по CmdlineDefBuf и заносит каждую запись
+;NAME\0VALUE<CR> в таблицу меток через CondNewLabel. После GetVar2
+;HL автоматически указывает на следующую запись (CR — терминатор
+;выражения для калькулятора). Дубликат — fatal ошибка: на этапе init
+;ErrorAsm-инфраструктура ещё непригодна, поэтому печатаем сами и
+;выходим через DSS Exit.
+ApplyCmdlineDefs
+                ld hl,CmdlineDefBuf
+ACDLoop         ld a,(hl)
+                or a
+                ret z           ;конец списка
+                ;Копируем NAME в WordBuf
+                ld de,WordBuf
+ACDName         ld a,(hl)
+                ld (de),a
+                inc hl
+                inc de
+                or a
+                jr nz,ACDName
+                ;HL теперь на VALUE. Вычисляем выражение через GetVar2,
+                ;который завершится на CR-терминаторе и оставит HL за CR.
+                ld a,(hl)
+                inc hl
+                call GetVar2
+                ld (LabelVar),de
+                ;Проверяем дубликат через SearchLabel
+                push hl
+                call SearchLabel
+                jp m,ACDAdd     ;не найдено → добавляем
+                ;Найдено → ошибка
+                ld hl,DupCmdlineDef
+                ld c,PChars
+                rst #10
+                ld b,1
+                ld c,Exit
+                rst #10
+ACDAdd          pop hl
+                push hl
+                ld de,(LabelVar)
+                call CondNewLabel
+                pop hl
+                jr ACDLoop
+
+DupCmdlineDef   db 13,10,"Duplicate command-line define",13,10,0
 
 ComStr4         ld hl,(OutFAdr)
                 call CurSpec    ;создаем имя выходного файла
@@ -358,7 +462,8 @@ ComStr9         ld hl,(RepFAdr) ;создаем имя файла-репорта
                 jp nz,ErrorDSS1
 ;                ld (hl),b       ;физ.номер страницы, включенной в 3-е окно
 
-                ld sp,#7fff
+                ;ld sp,#7fff — теперь делается в самом начале Main,
+                ;до любых overlay-вызовов из cmdline-парсинга.
                 call MemInfoTotal
                 call MemInfoFree
 
@@ -375,6 +480,8 @@ ComStr9         ld hl,(RepFAdr) ;создаем имя файла-репорта
                 jp c,Error
                 xor a
                 ld (TabLabel),a ;инициализация таблицы меток
+
+                call ApplyCmdlineDefs ;вносим cmdline -DNAME[=value] метки
 
                 ld b,1          ;выделение памяти под объектный код
                 ld c,GetMem
@@ -1128,124 +1235,34 @@ SOF101
                 ld (OpenFile),a
                 ret
 
+;SaveDirectiveFiles, SaveRangeFile, MapSaveRange, PrepareSaveSpec,
+;PrepareReadSpec, CurSpec, SaveCurPath, RestoreCurPath перенесены
+;в overlay.asm. ClampSaveLen удалён (мёртвый код, не вызывался).
+;В win1 остаются только тонкие трамплины (см. ниже) для callers,
+;которые живут вне overlay (SaveOutF, _include, _incbin, ComStr*).
+
 SaveDirectiveFiles
-                ld hl,SaveReqTable
-                ld (SaveReqCur),hl
-SDF0            ld hl,(SaveReqCur)
-                ld de,(SaveReqPtr)
-                or a
-                sbc hl,de
-                ret z
-                call CheckUserAbort
-                ld hl,(SaveReqCur)
-                ld e,(hl)
-                inc hl
-                ld d,(hl)
-                inc hl
-                ld (SaveStartTmp),de
-                ld e,(hl)
-                inc hl
-                ld d,(hl)
-                inc hl
-                ld (SaveLenTmp),de
-                push hl
-                ld de,OverlaySaving
-                call PrintOverlayString
-                pop hl
-                push hl
-                call PrString
-                pop hl
-                call SaveRangeFile
-                ld hl,(SaveReqCur)
-                ld de,SaveReqSize
-                add hl,de
-                ld (SaveReqCur),hl
-                jr SDF0
+                ld hl,OvSaveDirectiveFiles
+                jp CallOverlay
 
-SaveRangeFile  push hl
-                call SaveCurPath
-                pop hl
-                call PrepareSaveSpec
-                jp c,Error
-                call MapSaveRange
-                ld hl,(SaveNamePtr)
-                push hl
-                ld c,Delete
-                rst #10
-                pop hl
-                ld a,00100000b
-                ld c,Create
-                rst #10
-                jp c,SaveRangeError
-                ld (OpenFile),a
-                ld hl,(SaveObjOffTmp)
-                ld a,h
-                and #c0
-                rlca
-                rlca
-                ld (SaveCurPage),a
-                ld a,h
-                and #3f
-                or #c0
-                ld h,a
-                ld (SaveOff),hl
-SRF1            ld hl,(SaveLenTmp)
-                ld a,h
-                or l
-                jr z,SRF4
-                call CheckUserAbort
-                ld a,(SaveCurPage)
-                ld b,a
-                ld a,(OutFileID)
-                ld c,SetWin3
-                rst #10
-                jp c,SaveRangeError
-                ld hl,0
-                ld de,(SaveOff)
-                or a
-                sbc hl,de
-                ld de,(SaveLenTmp)
-                push hl
-                or a
-                sbc hl,de
-                pop hl
-                jr c,SRF2
-                jr SRF3
-SRF2            ex de,hl
-SRF3            push de
-                ld hl,(SaveOff)
-                ld a,(OpenFile)
-                ld c,Write
-                rst #10
-                jp c,SaveRangeError
-                pop de
-                ld hl,(SaveLenTmp)
-                or a
-                sbc hl,de
-                ld (SaveLenTmp),hl
-                ld hl,(SaveOff)
-                add hl,de
-                ld a,h
-                or l
-                jr nz,SRF5
-                ld hl,#c000
-                ld a,(SaveCurPage)
-                inc a
-                ld (SaveCurPage),a
-SRF5            ld (SaveOff),hl
-                jr SRF1
-SRF4            ld a,(OpenFile)
-                ld c,Close
-                rst #10
-                jp c,SaveRangeError
-                xor a
-                ld (OpenFile),a
-                jp RestoreCurPath
+;Трамплины SaveCurPath/RestoreCurPath — без аргументов.
+SaveCurPath     ld hl,OvSaveCurPath
+                jp CallOverlay
 
-SaveRangeError push af
-                call RestoreCurPath
-                pop af
-                jp Error
+RestoreCurPath  ld hl,OvRestoreCurPath
+                jp CallOverlay
+
+;PrepareReadSpec и CurSpec получают входной HL через SaveNamePtr —
+;CallOverlay использует HL под адрес overlay-функции, поэтому
+;аргумент пробрасываем через win1-переменную.
+PrepareReadSpec
+                ld (SaveNamePtr),hl
+                ld hl,OvPrepareReadSpec
+                jp CallOverlay
+
+CurSpec         ld (SaveNamePtr),hl
+                ld hl,OvCurSpec
+                jp CallOverlay
 
 ResetObjMap    xor a
                 ld (ObjSegCount),a
@@ -1334,253 +1351,6 @@ COO1            ld de,#4000
                 dec a
                 jr nz,COO1
                 ret
-
-MapSaveRange   ld hl,0
-                ld (SaveObjOffTmp),hl
-                ld a,(ObjSegCount)
-                or a
-                jr z,MSR9
-                ld b,a
-                ld hl,ObjSegTable
-MSR1            push bc
-                ld e,(hl)
-                inc hl
-                ld d,(hl)
-                inc hl
-                ld (ObjSegPcTmp),de
-                ld e,(hl)
-                inc hl
-                ld d,(hl)
-                inc hl
-                ld (ObjSegObjTmp),de
-                ld e,(hl)
-                inc hl
-                ld d,(hl)
-                inc hl
-                ld (ObjSegNextTmp),hl
-                ex de,hl
-                ld de,(ObjSegObjTmp)
-                or a
-                sbc hl,de       ;length of this generated segment
-                ld (ObjSegLenTmp),hl
-                ld a,h
-                or l
-                jr z,MSR7
-                ld hl,(SaveStartTmp)
-                ld de,(ObjSegPcTmp)
-                or a
-                sbc hl,de       ;delta from segment logical start
-                jr c,MSR7
-                ld (ObjSegDeltaTmp),hl
-                ld de,(ObjSegLenTmp)
-                or a
-                sbc hl,de
-                jr nc,MSR7
-                ld hl,(ObjSegObjTmp)
-                ld de,(ObjSegDeltaTmp)
-                add hl,de
-                ld (SaveObjOffTmp),hl
-                ;Объектный буфер непрерывен через все org-сегменты
-                ;(org меняет только логический PC, не SaveObjAdr), так
-                ;что обрезать SaveLenTmp по длине одного сегмента нельзя.
-                pop bc
-                ret
-MSR7            ld hl,(ObjSegNextTmp)
-                pop bc
-                djnz MSR1
-MSR9            ld hl,0
-                ld (SaveLenTmp),hl
-                ret
-
-ClampSaveLen   push hl
-                ld hl,(SaveObjAdr)
-                ld de,#8000
-                or a
-                sbc hl,de
-                ld a,(OutFileID+1)
-                dec a
-                jr z,SVCL2
-SVCL1           ld de,#4000
-                add hl,de
-                dec a
-                jr nz,SVCL1
-SVCL2           push hl
-                ld hl,(SaveStartTmp)
-                ld de,(New1)
-                or a
-                sbc hl,de
-                ex de,hl
-                pop hl
-                or a
-                sbc hl,de
-                jr nc,SVCL3
-                ld hl,0
-SVCL3           ld de,(SaveLenTmp)
-                push hl
-                or a
-                sbc hl,de
-                pop hl
-                jr nc,SVCL4
-                ld (SaveLenTmp),hl
-SVCL4           pop hl
-                ret
-
-PrepareSaveSpec
-                ld (SaveNamePtr),hl
-                ld (SaveDirPtr),hl
-                push hl
-                ld de,0
-ESD1            ld a,(hl)
-                or a
-                jr z,ESD2
-                cp '\'
-                jr z,ESD1B
-                cp '/'
-                jr nz,ESD1A
-ESD1B
-                ld d,h
-                ld e,l
-ESD1A           inc hl
-                jr ESD1
-ESD2            ld a,d
-                or e
-                jr nz,ESD3
-                pop hl
-                ret
-ESD3            pop hl
-                push hl
-                push de
-                ld a,(de)
-                ld (SaveSpecSlash),a
-                ex de,hl
-                xor a
-                ld (hl),a
-                ex de,hl
-                ld c,MkDir
-                rst #10
-                ld hl,(SaveDirPtr)
-                ld c,ChDir
-                rst #10
-                pop de
-                push af
-                ld a,(SaveSpecSlash)
-                ld (de),a
-                inc de
-                ld (SaveNamePtr),de
-                pop af
-                pop hl
-                ret
-
-PrepareReadSpec
-                ld (SaveNamePtr),hl
-                ld (SaveDirPtr),hl
-                push hl
-                ld de,0
-PRS1            ld a,(hl)
-                or a
-                jr z,PRS2
-                cp '\'
-                jr z,PRS1B
-                cp '/'
-                jr nz,PRS1A
-PRS1B
-                ld d,h
-                ld e,l
-PRS1A           inc hl
-                jr PRS1
-PRS2            ld a,d
-                or e
-                jr nz,PRS3
-                pop hl
-                ret
-PRS3            pop hl
-                push hl
-                push de
-                ld a,(de)
-                ld (SaveSpecSlash),a
-                ex de,hl
-                xor a
-                ld (hl),a
-                ld hl,(SaveDirPtr)
-                ld c,ChDir
-                rst #10
-                pop de
-                push af
-                ld a,(SaveSpecSlash)
-                ld (de),a
-                inc de
-                ld (SaveNamePtr),de
-                pop af
-                pop hl
-                ret
-;
-;Создание строки: текущий диск, текущий путь, имя основного файла
-;Вход: HL - буфер под выходную строку
-;
-CurSpec         push hl
-                ld c,CurDisk
-                rst #10         ;текущий диск
-                jp c,Error
-                add a,#61       ;имя текущего диска
-                ld (hl),a
-                inc hl
-                ld a,":"
-                ld (hl),a
-                inc hl
-
-                ld c,CurDir
-                rst #10         ;текущий каталог
-                jp c,Error
-                dec de
-                dec de
-                ld a,(de)
-                inc de
-                cp '\'
-                jr z,CurSpec1
-                ld a,'\'
-                ld (de),a
-                inc de
-CurSpec1        ld hl,ComBuffer
-                ld bc,#0345
-                rst #10         ;имя файлаOD
-                jp c,Error
-                pop hl
-                ld a,"."
-                ld bc,#0100
-                cpir
-                ld a,#10
-                jp nz,Error
-                ret
-;
-;Сохранение и восстановление текущего каталога вокруг INCLUDE
-;
-SaveCurPath     ld c,CurDisk
-                rst #10
-                jp c,Error
-                ld (SaveCurDisk),a
-                ld hl,SaveCurDir
-                ld c,CurDir
-                rst #10
-                jp c,Error
-                ret
-
-RestoreCurPath  ld a,(SaveCurDisk)
-                ld c,ChDisk
-                rst #10
-                jp c,Error
-                ld hl,RootDirPath ;сначала в корень, чтобы относительный путь
-                ld c,ChDir        ;из SaveCurDir интерпретировался от корня
-                rst #10
-                jp c,Error
-                ld hl,SaveCurDir
-                ld a,(hl)
-                or a
-                ret z             ;CurDir вернул пустую строку — мы и так в корне
-                ld c,ChDir
-                rst #10
-                jp c,Error
-                ret
-RootDirPath     db '\',0
 
 SetBankMap      ld de,(MapLabelID)
                 jr SetBankAsm1
@@ -2190,6 +1960,10 @@ SaveNamePtr     dw 0            ;имя файла после перехода �
 SaveSpecSlash   db 0            ;разделитель пути, временно заменяемый на #00
 SaveCurDisk     db 0            ;диск перед загрузкой INCLUDE
 SaveCurDir      ds 128          ;каталог перед загрузкой INCLUDE
+CmdlineDefPtr   dw CmdlineDefBuf ;следующая свободная позиция в CmdlineDefBuf
+CmdlineDefBuf   ds 128          ;cmdline -DNAME[=value] записи NAME\0VALUE\0...
+                                ;терминатор — \0 в позиции NAME (т.е. два
+                                ;\0 подряд после последней записи)
 ObjSegCount     db 0            ;количество сегментов объектного кода
 ObjSegPtr       dw ObjSegTable  ;следующая запись сегмента
 ObjSegCur       dw 0            ;текущий сегмент для ObjCopy
@@ -2252,11 +2026,11 @@ CoreEnd
                 ; ассерты прячем под ORGASM_HOST_BUILD.
                 ifdef ORGASM_HOST_BUILD
                 assert Start = #4100, "ASRT Start"
-                assert OverlayID = #71BC, "ASRT OverlayID"
-                assert TimeComp = #78CC, "ASRT TimeComp"
-                assert TimeComp+1 = #78CD, "ASRT TimeComp+1"
-                assert CoreEnd = #78AC, "ASRT CoreEnd"
-                assert CoreEnd-Start = #37AC, "ASRT CoreEnd-Start"
+                assert OverlayID = #7007, "ASRT OverlayID"
+                assert TimeComp = #7799, "ASRT TimeComp"
+                assert TimeComp+1 = #779A, "ASRT TimeComp+1"
+                assert CoreEnd = #7779, "ASRT CoreEnd"
+                assert CoreEnd-Start = #3679, "ASRT CoreEnd-Start"
                 endif
                 ifdef ORGASM_HOST_BUILD
                 savebin "out/core.bin",Start,CoreEnd-Start
