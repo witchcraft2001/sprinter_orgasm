@@ -64,10 +64,17 @@ runtime the loader allocates and maps win1, allocates the overlay page, reads
 the raw core directly to `#4100`, reads the overlay through win3, passes the
 overlay block ID in `A`, and jumps to the core.
 
-Target-side self-hosting uses plain OrgAsm wrappers without sjasmplus command
-line defines: assemble `ORGSELF.ASM` once to write both `OUT\CORE.BIN` and
-`OUT\OVERLAY.BIN`, then assemble `ORGLDUP.ASM` to write an unpacked
-`ORGASM.EXE` from those two files. `SELFBLD.BAT` runs these two steps.
+Target-side self-hosting reuses the regular `orgasm.asm` and `orgload.asm`
+sources via OrgAsm command-line defines (`-DNAME[=value]` / `/DNAME[=value]`),
+so no wrapper files are needed. `SELFBLD.BAT` runs the two steps:
+
+```
+..\ORGASM.EXE orgasm.asm /N /L=ORGSELF.ERR -DORGASM_WITH_OVERLAY -DORGASM_SELF_BUILD
+..\ORGASM.EXE orgload.asm /N /L=ORGLDUP.ERR -DORGASM_UNPACKED -DORGASM_SELF_BUILD
+```
+
+The first call writes `OUT\CORE.BIN` and `OUT\OVERLAY.BIN`; the second
+assembles those into an unpacked `OUT\ORGASM.EXE`.
 
 ```sh
 make dist

@@ -203,3 +203,11 @@ OverlayPayloadStart
                 endif
 OverlayPayloadEnd
 OverlayPayloadSize equ OverlayPayloadEnd-OverlayPayloadStart
+
+;Self-build пишет результат через savebin (host build получает .exe
+;через sjasmplus --raw=...). Хосту в unpacked-режиме savebin не нужен.
+                ifdef ORGASM_SELF_BUILD
+                ifdef ORGASM_UNPACKED
+                savebin "OUT\ORGASM.EXE",ExeHeader,OverlayPayloadEnd-ExeHeader
+                endif
+                endif

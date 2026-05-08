@@ -22,6 +22,7 @@ Options:
 - `/M` - create a symbol table.
 - `/N` - do not create the implicit output file; output is produced only by `SAVE`/`SAVEBIN` and explicitly requested service files.
 - `/S` - clear the screen before running.
+- `-DNAME[=value]` or `/DNAME[=value]` - pre-define a symbol on the command line. `-DNAME` defines `NAME` with value `1`. `-DNAME=value` evaluates `value` through the calc and assigns the result; expressions, hex (`-DBAR=#ABCD`), decimal (`-DBAR=42`), and char literals all work. Defines are installed before pass 1, so `IFDEF`, `IFNDEF`, `IF`, and any expression sees them like a source-level `DEFINE`. Source-level `DEFINE`/`UNDEFINE` is still free to override or remove them. Repeating the same name on the command line (`-DFOO -DFOO`) is a fatal error. Use this to assemble the same source under different configurations without per-config wrapper files (for example, the self-build scripts use `-DORGASM_WITH_OVERLAY -DORGASM_SELF_BUILD` and `-DORGASM_UNPACKED -DORGASM_SELF_BUILD` against the regular `orgasm.asm` and `orgload.asm`).
 
 ## Diagnostics
 
@@ -298,8 +299,6 @@ Examples are stored in `examples/`:
 - `ERRORS` - intentionally invalid example for checking `/L` and active `ERROR`.
 
 Each example directory contains a Sprinter make `makefile` and a `build.bat` file for users without make.
-
-Target-side self-hosting uses plain OrgAsm wrappers without sjasmplus command line defines: `ORGSELF.ASM` saves both `OUT\CORE.BIN` and `OUT\OVERLAY.BIN` in one build, then `ORGLDUP.ASM` builds an unpacked `ORGASM.EXE` from those two files. `SELFBLD.BAT` runs these two steps.
 
 ## Distribution
 
