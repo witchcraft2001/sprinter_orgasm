@@ -62,9 +62,9 @@ This file tracks the staged work needed to add practical sjasmplus source compat
   - [x] keep source-level `DEFINE`/`UNDEFINE` behavior unchanged after startup, so a source can intentionally override or remove a command-line define if it already can do that for any other define;
   - [x] duplicate `-DNAME -DNAME` is a fatal error ("Duplicate command-line define") — explicit, no silent override.
   - [x] add `examples/CMDDEF/` with `MAIN.ASM` + `build.bat` exercising 4 scenarios.
-  - [ ] support `ORGASM_UNPACKED` use case: `orgasm orgload.asm orgunpk.exe /N -DORGASM_UNPACKED` — needs follow-up to refactor wrappers (orgself.asm/orgldup.asm savebin'ы переехать в orgasm.asm/orgload.asm под `ifdef`).
-  - [ ] document the option in both manuals.
-- [ ] Verify OrgAsm-on-OrgAsm assembly: build OrgAsm with sjasmplus, then assemble the same source with OrgAsm and compare binaries.
+  - [x] support `ORGASM_UNPACKED` use case: `orgasm orgload.asm /N -DORGASM_UNPACKED -DORGASM_SELF_BUILD`. Wrappers `ORGSELF.ASM`/`ORGLDUP.ASM` removed; `savebin` for `OUT\CORE.BIN`/`OUT\OVERLAY.BIN`/`OUT\ORGASM.EXE` now lives in `orgasm.asm`/`orgload.asm` under `ifdef ORGASM_SELF_BUILD` blocks.
+  - [x] document the option in both manuals.
+- [x] Verify OrgAsm-on-OrgAsm assembly: build OrgAsm with sjasmplus, then assemble the same source with OrgAsm and compare binaries. Target self-build (`SELFBLD.BAT`) produces byte-identical `CORE.BIN` (13945), `OVERLAY.BIN` (2224), and `ORGASM.EXE` (16814) versus the host `make` artifacts.
 - [x] Document `SAVE`/`SAVEBIN`, `OUTPUT`/`OUTEND`, `/N`, and data aliases in `docs/` in Russian and English, then update `README`, `README.eng`, and `HISTORY` as summaries/pointers.
 
 ## Stage 3: Conditional Compilation
@@ -138,6 +138,33 @@ This file tracks the staged work needed to add practical sjasmplus source compat
 - [ ] Revisit low-memory workspace pressure before adding more parser features; the loader/core split restored `MaxLoadFile` to 64, but `ComBuffer` and the stack still share the top of the resident core workspace.
 - [x] Add ASM examples for every newly supported extended sjasmplus directive.
 - [ ] Document the supported sjasmplus subset and explicitly unsupported features in `docs/` in Russian and English.
+
+## Stage 8: Relocatable Object Output (REL)
+
+Goal: emit linker-ready object modules so OrgAsm sources can be linked together with units produced by other toolchains. Target format is the SDCC/ASxxxx text REL accepted by `sdldz80` (the Sprinter SDK linker), because it is text, documented, and pipeline-relevant. MS REL (M80/L80) is out of scope for the first cut.
+
+- [ ] Decide and document the supported REL flavor and its limits (areas, relocation kinds, expression contexts) before implementation; explicitly call out what we do not support.
+- [ ] Add a build mode switch (e.g. `/REL` or directive `MODULE name`) that selects relocatable output instead of absolute `SAVE`/`SAVEBIN`/EXE flow. In REL mode, `ORG` and the implicit output are disabled or redefined.
+- [ ] Add symbol visibility directives:
+  - `PUBLIC name` / `GLOBAL name` — mark a defined symbol as exported.
+  - `EXTERN name` / `EXTRN name` — declare a symbol resolved by the linker; references are allowed without producing an undefined-symbol error.
+- [ ] Add area/section directives:
+  - `AREA name [(flags)]` — switch the current emission area; flags map to ASxxxx semantics (REL/CON/OVR/ABS/PAG) on a minimal supported subset.
+  - Default areas `_CODE`, `_DATA`, `_BSS` available out of the box.
+- [ ] Track per-area emission with its own offset counter and per-area object buffer; replace single-buffer assumptions in the emit path with an area-aware backend (overlaps with Stage 5 backend boundary work — share infrastructure).
+- [ ] Extend the calc engine to flag expressions that reference an `EXTERN` or area-relative symbol, and restrict where such expressions may appear (allowed contexts only): `dw <sym>`, `ld rr,<sym>`, `jp/call <sym>`, `db <sym>`/`<sym`/`>sym`, with optional `+const`/`-const`. Reject externals in any other expression context with a clear diagnostic.
+- [ ] Build a relocation table during pass 2: for every emission that references an area-relative or external symbol, record `(area, offset, fixup-kind, symbol-index, addend)`. Allocate the reloc buffer through `Dss.GetMem` (mirror what the label table already does).
+- [ ] Implement the REL writer (cold code, lives in overlay): emit `XL2`/`H`/`M`/`S`/`A`/`T`/`R`/`P` records in the documented order; produce one `.rel` per module; deferred-write at end of compilation like `SAVE`.
+- [ ] Add a regression example that produces a `.rel`, links it with `sdldz80` against a stub from the SDCC SDK, and compares the linked binary to a pre-recorded reference. Place sources under `examples/REL/`.
+- [ ] Document REL mode in `docs/ru/manual.md` and `docs/en/manual.md`: supported directives, area/visibility model, allowed expression contexts for externals, command-line/mode switch, and limitations vs. full ASxxxx.
+- [ ] Add `HISTORY` entry once shipped.
+
+Open questions to resolve before starting implementation:
+
+- Whether to require an explicit mode switch (`/REL`) or auto-detect mode from the presence of `MODULE`/`AREA` directives.
+- Whether to support multi-area `.rel` (one module, multiple areas) in MVP, or limit MVP to a single `_CODE` area.
+- Memory budget for the reloc table: prefer dynamic page allocation over a fixed buffer, so reloc-heavy modules do not OOM.
+- Whether MS REL (M80/L80) joins this stage as a second writer or stays out of scope until requested.
 
 ## Long-Term Memory Model
 
