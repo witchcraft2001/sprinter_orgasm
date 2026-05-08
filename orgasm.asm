@@ -747,6 +747,17 @@ TimeCalc        ld hl,OverlayTimeCalc
                 call CallOverlay
                 jp ExitDSS
 
+;Error infrastructure (PrintErrLocation/WriteErrLog/...) живёт в win1:
+;она работает с source-памятью через win2/win3 (через SetBankAsm) и
+;вызывает DSS (Cursor/WrChar/Write), которые местами трогают win-mapping.
+;В overlay'е остались только холодные строки сообщений + lookup+print
+;(OverlayPrintErrMsg). Сама ErrorAsm в error.asm зовёт overlay только
+;для печати строки сообщения, всё остальное (location, log, source-line,
+;underline) делает в win1.
+;
+;ErrCopySpecName также остаётся в win1 (шарится с горячим путём
+;AsmF6 для печати "Return to file:").
+
 OpenErrLog      ld a,(ErrFile)
                 or a
                 ret z
@@ -891,54 +902,6 @@ ErrGetFileName  ld a,(CurrentFile)
 ErrGetFileName1 ex de,hl
                 ret
 
-ErrCopySpecName
-                ld a,(hl)
-                inc hl
-                cp #09
-                jr z,ErrCopySpecName
-                cp #20
-                jr z,ErrCopySpecName
-                cp '"'
-                jr z,ErrCopyQuoted
-                cp "'"
-                jr z,ErrCopyQuoted
-ErrCopyPlain    or a
-                jr z,ErrCopyDone
-                cp #09
-                jr z,ErrCopyDone
-                cp #20
-                jr z,ErrCopyDone
-                cp #0d
-                jr z,ErrCopyDone
-                cp #0a
-                jr z,ErrCopyDone
-                cp ','
-                jr z,ErrCopyDone
-                cp ';'
-                jr z,ErrCopyDone
-                ld (de),a
-                inc de
-                ld a,(hl)
-                inc hl
-                jr ErrCopyPlain
-ErrCopyQuoted   ld c,a
-ErrCopyQuoted1  ld a,(hl)
-                inc hl
-                or a
-                jr z,ErrCopyDone
-                cp c
-                jr z,ErrCopyDone
-                cp #0d
-                jr z,ErrCopyDone
-                cp #0a
-                jr z,ErrCopyDone
-                ld (de),a
-                inc de
-                jr ErrCopyQuoted1
-ErrCopyDone     xor a
-                ld (de),a
-                ret
-
 ErrLineStart    ld hl,ErrLineBuf
 ErrLineStart1   ld a,(hl)
                 cp #20
@@ -992,6 +955,54 @@ ErrWriteLine2   pop hl
                 ld a,(ErrOpenFile)
                 ld c,Write
                 rst #10
+                ret
+
+ErrCopySpecName
+                ld a,(hl)
+                inc hl
+                cp #09
+                jr z,ErrCopySpecName
+                cp #20
+                jr z,ErrCopySpecName
+                cp '"'
+                jr z,ErrCopyQuoted
+                cp "'"
+                jr z,ErrCopyQuoted
+ErrCopyPlain    or a
+                jr z,ErrCopyDone
+                cp #09
+                jr z,ErrCopyDone
+                cp #20
+                jr z,ErrCopyDone
+                cp #0d
+                jr z,ErrCopyDone
+                cp #0a
+                jr z,ErrCopyDone
+                cp ','
+                jr z,ErrCopyDone
+                cp ';'
+                jr z,ErrCopyDone
+                ld (de),a
+                inc de
+                ld a,(hl)
+                inc hl
+                jr ErrCopyPlain
+ErrCopyQuoted   ld c,a
+ErrCopyQuoted1  ld a,(hl)
+                inc hl
+                or a
+                jr z,ErrCopyDone
+                cp c
+                jr z,ErrCopyDone
+                cp #0d
+                jr z,ErrCopyDone
+                cp #0a
+                jr z,ErrCopyDone
+                ld (de),a
+                inc de
+                jr ErrCopyQuoted1
+ErrCopyDone     xor a
+                ld (de),a
                 ret
 
 CreateSub ;в v0.2X это теперь подпрограмма
@@ -1869,15 +1880,20 @@ JumpOverlay     push af
                 jp (hl)
 
 MapOverlay      push hl
+                push bc         ;BC сохраняем, чтобы caller'ы (например
+                                ;ErrorAsm с B=кодом ошибки) не теряли его
+                                ;через CallOverlay
                 ld a,(OverlayID)
                 ld b,0
                 ld c,SetWin2
                 rst #10
                 jr c,OverlayMapError
+                pop bc
                 pop hl
                 ret
 
-OverlayMapError pop hl
+OverlayMapError pop bc
+                pop hl
                 ld b,1
                 ld c,Exit
                 rst #10
@@ -2107,6 +2123,8 @@ ErrColon        db ":",0
 ErrColonSpace   db ": ",0
 ErrCRLF         db 13,10,0
 CRLF            db 10,13,0
+ErrMsgBuf       ds 48           ;буфер под копию сообщения ошибки
+                                ;(оверлей кладёт сюда строку для WriteErrLog)
 OkText          db "O'Key!",13,10,0
 
 OpenFile        db 0            ;признак откр.файла (<>0 - есть откр.файл)
@@ -2228,11 +2246,11 @@ CoreEnd
                 ; ассерты прячем под ORGASM_HOST_BUILD.
                 ifdef ORGASM_HOST_BUILD
                 assert Start = #4100, "ASRT Start"
-                assert OverlayID = #7349, "ASRT OverlayID"
-                assert TimeComp = #7B59, "ASRT TimeComp"
-                assert TimeComp+1 = #7B5A, "ASRT TimeComp+1"
-                assert CoreEnd = #7B39, "ASRT CoreEnd"
-                assert CoreEnd-Start = #3A39, "ASRT CoreEnd-Start"
+                assert OverlayID = #71AC, "ASRT OverlayID"
+                assert TimeComp = #79BC, "ASRT TimeComp"
+                assert TimeComp+1 = #79BD, "ASRT TimeComp+1"
+                assert CoreEnd = #799C, "ASRT CoreEnd"
+                assert CoreEnd-Start = #389C, "ASRT CoreEnd-Start"
                 endif
                 ifdef ORGASM_HOST_BUILD
                 savebin "out/core.bin",Start,CoreEnd-Start

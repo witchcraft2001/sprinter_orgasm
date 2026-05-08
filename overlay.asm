@@ -235,6 +235,94 @@ OverlayAbortMsg
 OverlayPrTimeComp
                 db 13,10,"Compile time - 00:00",13,10,10,0
 
+;-----------------------------------------------------------------------------
+; Error message lookup + print (cold strings).
+; Тело ErrorAsm и все error-helpers живут в win1, оверлей хранит только
+; таблицу сообщений и крошечный lookup+PChars.
+;-----------------------------------------------------------------------------
+
+;OverlayPrintErrMsg: B = код ошибки. Записывает указатель на
+;сообщение в ErrMsgPtr (используется WriteErrLog в win1) и печатает
+;строку через PChars. Сохраняет регистры по win1-конвенции.
+OverlayPrintErrMsg
+                push hl
+                push de
+                push bc
+                ld a,b
+                res 7,a         ;сбрасываем бит фатальной ошибки
+                cp #14
+                jr c,OvErM1
+                ld a,#11
+OvErM1          dec a
+                add a,a
+                ld c,a
+                ld b,0
+                ld hl,OvErrAsmTbl
+                add hl,bc
+                ld a,(hl)
+                inc hl
+                ld h,(hl)
+                ld l,a           ;HL = overlay-адрес строки (#80xx)
+                ;Копируем строку в win1-буфер ErrMsgBuf, чтобы
+                ;WriteErrLog (в win1) мог читать её после возврата
+                ;из overlay (когда win2 уже не overlay).
+                ld de,ErrMsgBuf
+                push de
+OvErMCp         ld a,(hl)
+                ld (de),a
+                inc hl
+                inc de
+                or a
+                jr nz,OvErMCp
+                pop hl           ;HL = ErrMsgBuf (win1)
+                ld (ErrMsgPtr),hl
+                ld c,PChars
+                rst #10
+                pop bc
+                pop de
+                pop hl
+                ret
+
+OvErrAsmTbl     dw OvEr01
+                dw OvEr02
+                dw OvEr03
+                dw OvEr04
+                dw OvEr05
+                dw OvEr06
+                dw OvEr07
+                dw OvEr08
+                dw OvEr09
+                dw OvEr0A
+                dw OvEr0B
+                dw OvEr0C
+                dw OvEr0D
+                dw OvEr0E
+                dw OvEr8F
+                dw OvEr90
+                dw OvEr91
+                dw OvEr12
+                dw OvEr13
+
+OvEr01          db "Syntax error",0
+OvEr02          db "Invalid label",0
+OvEr03          db "Label already defined",0
+OvEr04          db "No such label",0
+OvEr05          db "Relative jump out of range",0
+OvEr06          db "PHASE directive before DEPHASE",0
+OvEr07          db "Missing DEPHASE",0
+OvEr08          db "Inadmissible ORG in block PHASE/DEPHASE",0
+OvEr09          db "Too many INCLUDE file",0
+OvEr0A          db "Too many data in DB, DW or DS instructions",0
+OvEr0B          db "Invalid expression",0
+OvEr0C          db "Missing (",0
+OvEr0D          db "Missing )",0
+OvEr0E          db "Division by zero",0
+OvEr8F          db "Overflowing of labels table",0
+OvEr90          db "Overflowing of operations stack",0
+OvEr91          db "General failure",0
+OvEr12          db "User error",0
+OvEr13          db "Assertion failed",0
+
 OverlayEnd
                 ifdef ORGASM_HOST_BUILD
                 savebin "out/overlay.bin",OverlayStart,OverlayEnd-OverlayStart
