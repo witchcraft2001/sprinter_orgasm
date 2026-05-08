@@ -2154,8 +2154,14 @@ PCExpr2First    db 0            ;первый символ выражения 2-
 PCExpr2Adr      dw 0            ;адрес выражения 2-го операнда
 PCExprIndex     db 0            ;номер разбираемого операнда
 RelExprIndex    db 0            ;номер операнда относительного перехода
-ErrNameBuf      ds 128          ;явное имя файла ошибок
-MainFileName    ds 128          ;стабильная копия имени главного исходника
+;ErrNameBuf и MainFileName переиспользуют память CoreCommandLine
+;(#4000-#40FF). Командная строка нужна только в Main для парсинга
+;и копируется в ComBuffer; после этого область #4000 свободна.
+;ErrNameBuf пишется ещё во время разбора /L=name — это безопасно,
+;т.к. запись идёт линейно от #4000, а HL читает /L=name уже из
+;#400D+. Расстояние HL-DE остаётся положительным.
+ErrNameBuf      equ CoreCommandLine        ;128 байт #4000-#407F
+MainFileName    equ CoreCommandLine+128    ;128 байт #4080-#40FF
 NoOutFlag       db 0            ;#ff - не создавать неявный выходной файл
 FileNamePage    db 0            ;банк строки с именем загружаемого файла
 FileNameAdr     dw 0            ;адрес строки с именем загружаемого файла
@@ -2246,11 +2252,11 @@ CoreEnd
                 ; ассерты прячем под ORGASM_HOST_BUILD.
                 ifdef ORGASM_HOST_BUILD
                 assert Start = #4100, "ASRT Start"
-                assert OverlayID = #71AC, "ASRT OverlayID"
-                assert TimeComp = #79BC, "ASRT TimeComp"
-                assert TimeComp+1 = #79BD, "ASRT TimeComp+1"
-                assert CoreEnd = #799C, "ASRT CoreEnd"
-                assert CoreEnd-Start = #389C, "ASRT CoreEnd-Start"
+                assert OverlayID = #71BC, "ASRT OverlayID"
+                assert TimeComp = #78CC, "ASRT TimeComp"
+                assert TimeComp+1 = #78CD, "ASRT TimeComp+1"
+                assert CoreEnd = #78AC, "ASRT CoreEnd"
+                assert CoreEnd-Start = #37AC, "ASRT CoreEnd-Start"
                 endif
                 ifdef ORGASM_HOST_BUILD
                 savebin "out/core.bin",Start,CoreEnd-Start

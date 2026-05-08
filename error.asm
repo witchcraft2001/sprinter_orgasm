@@ -107,7 +107,19 @@ ErAsm3		ld hl,ErrCRLF
 		ld (ErrorPass),hl
 		pop bc
 		bit 7,b
-		jp nz,ExitDSS	;выход при фатальной ошибке
+		jr nz,ErAsmFatal	;фатальная ошибка → summary + ExitDSS
 		pop af
 		pop hl
 		ret
+
+;Перед выходом из-за фатальной ошибки печатаем "Errors: N
+;No code generated...", чтобы поведение совпадало с не-фатальным
+;путём (AsmF4 → OverlayPrintErrors → ExitDSS).
+ErAsmFatal	push hl
+		ld hl,CRLF
+		ld c,PChars
+		rst #10
+		pop hl
+		ld hl,OverlayPrintErrors
+		call CallOverlay
+		jp ExitDSS
